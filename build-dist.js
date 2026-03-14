@@ -12,6 +12,7 @@ const BOOTBOX_SOURCE_URL = new URL('./bootbox.sh', import.meta.url);
 const DIST_FILES = [
   ['bootbox.sh', 'bootbox.sh'],
   ['site/index.html', 'index.html'],
+  ['site/netlify.toml', 'netlify.toml'],
   ['site/robots.txt', 'robots.txt'],
 ];
 const EXECUTABLES = ['bootbox.sh'];
