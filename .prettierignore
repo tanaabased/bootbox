@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+temp
+cache
+.tmp
+_site
+.vitepress/cache
+.vitepress/dist
+bun.lock

@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="refresh" content="0; url=/bootbox.sh" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bootbox</title>
+    <script>
+      const TARGETS = {
+        default: '/bootbox.sh',
+        windows: '/bootbox.sh',
+      };
+
+      function getRedirectTarget(userAgent) {
+        if (/Windows Phone|Windows Mobile|Windows/i.test(userAgent)) {
+          return TARGETS.windows;
+        }
+
+        return TARGETS.default;
+      }
+
+      const redirectTarget = getRedirectTarget(window.navigator.userAgent);
+      window.location.replace(new URL(redirectTarget, window.location.origin).toString());
+    </script>
+  </head>
+  <body>
+    <p>Redirecting to <a href="/bootbox.sh">/bootbox.sh</a>.</p>
+  </body>
+</html>
