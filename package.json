@@ -1,12 +1,17 @@
 {
   "name": "@tanaab/bootbox",
-  "description": "Tanaab based macOS box booting script.",
+  "description": "Hosted macOS bootstrap script for Homebrew, dotpackages, and SSH keys.",
   "version": "0.1.0",
   "author": "Mike Pirog @pirog",
   "license": "MIT",
-  "repository": "https://github.com/tanaab/bootbox",
-  "bugs": "https://github.com/tanaab/bootbox/issues",
-  "homepage": "https://github.com/tanaab/bootbox",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tanaabased/bootbox.git"
+  },
+  "bugs": {
+    "url": "https://github.com/tanaabased/bootbox/issues"
+  },
+  "homepage": "https://bootbox.tanaab.sh",
   "type": "module",
   "packageManager": "bun@1.3.4",
   "engines": {
@@ -23,7 +28,6 @@
   },
   "scripts": {
     "build": "bun ./build-dist.js",
-    "build:dist": "bun ./build-dist.js",
     "format:check": "prettier --check .",
     "format:write": "prettier --write .",
     "lint:eslint": "eslint .",

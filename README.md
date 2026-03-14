@@ -30,13 +30,16 @@ Bootbox is designed to be run directly from the hosted script at `https://bootbo
 ## Usage
 
 The main flow is: choose a target machine, decide which Brewfiles and dotpackages you want, and then
-run Bootbox once to converge the box into that state.
+run Bootbox once to converge the box into that state. If you have installed the hosted script as a
+local `bootbox` command, the common flows look like this:
 
 ```sh
-./bootbox.sh --brewfile Brewfile.work --target "$HOME"
-./bootbox.sh --dotpkg dotpkgs/git --dotpkg dotpkgs/zsh --target "$HOME"
-./bootbox.sh --ssh-key "my-vault/id_work" --op-token "$TANAAB_OP_TOKEN"
+bootbox --brewfile Brewfile.work --target "$HOME"
+bootbox --dotpkg dotpkgs/git --dotpkg dotpkgs/zsh --target "$HOME"
+bootbox --ssh-key "my-vault/id_work" --op-token "$TANAAB_OP_TOKEN"
 ```
+
+If you are working from a local checkout instead, replace `bootbox` with `./bootbox.sh`.
 
 The `examples/` directory contains Leia-backed scenario folders for the main supported flows,
 including multi-Brewfile installs, dotpackage installs, and live 1Password SSH key installation.

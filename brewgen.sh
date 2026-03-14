@@ -17,7 +17,7 @@ set -euo pipefail
 # Copyright (c) 2026, Tanaab Maneuvering Systems LLC
 #
 # All rights reserved.
-# See license in the repo: https://github.com/tanaab/bootbox/blob/main/LICENSE
+# See license in the repo: https://github.com/tanaabased/bootbox/blob/main/LICENSE
 #
 # shellcheck disable=SC2312
 

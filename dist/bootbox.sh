@@ -18,7 +18,7 @@ set -euo pipefail
 # Copyright (c) 2026, Tanaab Maneuvering Systems LLC
 #
 # All rights reserved.
-# See license in the repo: https://github.com/tanaab/bootbox/blob/main/LICENSE
+# See license in the repo: https://github.com/tanaabased/bootbox/blob/main/LICENSE
 #
 # We don't need return codes for "$(command)", only stdout is needed.
 # Allow `[[ -n "$(command)" ]]`, `func "$(command)"`, pipes, etc.
@@ -695,9 +695,6 @@ default_homebrew_prefix() {
   fi
 }
 
-# @TODO: do we want to also allow for also just dotfile?
-# DOTPKGS="${TANAAB_DOTPKGS-"ai,git,ssh"}"
-
 # core packages that should be present regardless of any user-provided Brewfile
 declare -a TANAAB_CORE_BREW_PACKAGES=(
   "formula|git|git"
@@ -707,9 +704,6 @@ declare -a TANAAB_CORE_BREW_PACKAGES=(
   "formula|jq|jq"
   "formula|stow|stow"
 )
-
-# @TODO: we need to make sure this is masked in any display
-# OP_AUTH="${TANAAB_OP_AUTH:-$OP_TOKEN}"
 
 # GET THE LTF right away once we know we are not exiting through usage/version.
 TANAAB_TMPFILE="$(mktemp -t tanaab.XXXXXX)"
@@ -815,7 +809,7 @@ warn_multi() {
 debug "running bootbox.sh script version: ${SCRIPT_VERSION}"
 
 # debug raw options
-# these are options that have not yet been validated or mutated e.g. the ones the user has supplied or defualts\
+# these are options that have not yet been validated or mutated e.g. the ones the user has supplied or defaults
 debug "raw args bootbox.sh $ORIGOPTS"
 debug raw CI="${CI:-}"
 debug raw NONINTERACTIVE="${NONINTERACTIVE:-}"
@@ -1528,8 +1522,13 @@ evaluate_dotpkg() {
   CURRENT_DOTPKG_NEEDS_STOW=""
   CURRENT_DOTPKG_CONFLICT_TARGETS=()
 
-  simulate_output="$(simulate_dotpkg "${dotpkg}")"
-  simulate_status="$?"
+  # Capture the simulation result through an if-condition so expected conflict exits
+  # do not trip `set -e` before we can inspect the output and status.
+  if simulate_output="$(simulate_dotpkg "${dotpkg}")"; then
+    simulate_status="0"
+  else
+    simulate_status="$?"
+  fi
   cleaned_output="$(strip_stow_simulation_noise "${simulate_output}")"
 
   if [[ -n "${cleaned_output}" ]]; then
@@ -1806,7 +1805,7 @@ fi
 if [[ "${OS}" != "macos" ]]; then
   abort_multi "$(cat <<EOABORT
 This script is only for ${tty_green}macOS${tty_reset}. ${tty_red}${OS}${tty_reset} is not supported!
-Check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaab/bootbox${tty_reset}
+Check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
 fi
@@ -1815,7 +1814,7 @@ fi
 if [[ "${ARCH}" != "x64" ]] && [[ "${ARCH}" != "arm64" ]]; then
   abort_multi "$(cat <<EOABORT
 This script currently only supports ${tty_green}x64${tty_reset} and ${tty_green}arm64${tty_reset} systems.
-Check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaab/bootbox${tty_reset}
+Check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
 fi
@@ -1826,7 +1825,7 @@ if [[ "${OS}" == "macos" ]]; then
   if ! version_compare "${macos_version}" "${MACOS_OLDEST_SUPPORTED}"; then
     abort_multi "$(cat <<EOABORT
 Your macOS version ${tty_red}${macos_version}${tty_reset} is ${tty_bold}too old${tty_reset}! Min required version is ${tty_green}${MACOS_OLDEST_SUPPORTED}${tty_reset}
-Check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaab/bootbox${tty_reset}
+Check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
   fi
@@ -1850,7 +1849,7 @@ if needs_sudo && ! have_sudo_access; then
   abort_multi "$(cat <<EOABORT
 ${tty_bold}${USER}${tty_reset} cannot write to ${tty_red}${TARGET}${tty_reset} or the expected Homebrew location ${tty_red}${HOMEBREW_PREFIX}${tty_reset} and is not a ${tty_bold}sudo${tty_reset} user!
 Rerun setup with a sudoer or use --target to install into a directory ${tty_bold}${USER}${tty_reset} can write to.
-For more information on advanced usage rerurn with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaab/bootbox${tty_reset}
+For more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
 fi
@@ -1922,7 +1921,6 @@ wait_for_user() {
 }
 
 # shellcheck disable=SC2329
-# @TODO: revisit later whether we need this still
 auto_mkdirp() {
   local dir="$1"
   local perm_dir
@@ -1936,7 +1934,6 @@ auto_mkdirp() {
 }
 
 # shellcheck disable=SC2329
-# @TODO: revisit later whether we need this still
 auto_mv() {
   local source="$1"
   local dest="$2"

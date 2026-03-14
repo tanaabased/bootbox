@@ -7,13 +7,13 @@ const DIST_URL = new URL('./dist/', import.meta.url);
 const REPO_URL = new URL('./', import.meta.url);
 const REPO_ROOT = fileURLToPath(REPO_URL);
 const PUBLIC_ORIGIN = 'https://bootbox.tanaab.sh';
+const ROBOTS_URL = new URL('./robots.txt', DIST_URL);
 const SITEMAP_URL = new URL('./sitemap.xml', DIST_URL);
 const BOOTBOX_SOURCE_URL = new URL('./bootbox.sh', import.meta.url);
 const DIST_FILES = [
   ['bootbox.sh', 'bootbox.sh'],
   ['site/index.html', 'index.html'],
   ['site/netlify.toml', 'netlify.toml'],
-  ['site/robots.txt', 'robots.txt'],
 ];
 const EXECUTABLES = ['bootbox.sh'];
 const execFileAsync = promisify(execFile);
@@ -96,6 +96,16 @@ function renderSitemap(lastmod) {
 `;
 }
 
+function renderRobots() {
+  return `User-agent: *
+Disallow: /
+Sitemap: ${PUBLIC_ORIGIN}/sitemap.xml
+Host: ${PUBLIC_ORIGIN}
+Allow: /bootbox.sh
+Allow: /sitemap.xml
+`;
+}
+
 async function resetDist() {
   await rm(DIST_URL, { recursive: true, force: true });
   await mkdir(DIST_URL, { recursive: true });
@@ -122,6 +132,12 @@ async function writeSitemap() {
   log(`wrote ${SITEMAP_URL.pathname}`);
 }
 
+async function writeRobots() {
+  await writeFile(ROBOTS_URL, renderRobots(), 'utf8');
+
+  log(`wrote ${ROBOTS_URL.pathname}`);
+}
+
 async function main() {
   await resetDist();
 
@@ -131,6 +147,7 @@ async function main() {
   }
 
   await writeSitemap();
+  await writeRobots();
 
   for (const executable of EXECUTABLES) {
     await makeExecutable(executable);
