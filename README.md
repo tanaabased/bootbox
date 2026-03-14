@@ -14,12 +14,13 @@ Examples of that pattern include [pirog/me](https://github.com/pirog/me),
 ## Quickstart
 
 ```sh
-curl -fsSL https://bootbox.tanaab.sh | bash
+curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | bash
 ```
 
 ## Installation
 
-Bootbox is designed to be run directly from the hosted script at `https://bootbox.tanaab.sh`.
+Bootbox is designed to be run directly from the hosted script at
+`https://bootbox.tanaab.sh/bootbox.sh`.
 
 - It requires Bash and cURL to start.
 - It supports installing into the default home directory target or a custom `--target`.
@@ -64,7 +65,7 @@ a directory that is already in your `PATH` or one you manage yourself.
 
 ```sh
 mkdir -p "$HOME/.local/bin"
-curl -fsSL https://bootbox.tanaab.sh -o "$HOME/.local/bin/bootbox"
+curl -fsSL https://bootbox.tanaab.sh/bootbox.sh -o "$HOME/.local/bin/bootbox"
 chmod +x "$HOME/.local/bin/bootbox"
 
 bootbox --help
@@ -76,9 +77,9 @@ If you do not want to install a local command first, you can also set environmen
 and pipe the hosted script straight into Bash.
 
 ```sh
-curl -fsSL https://bootbox.tanaab.sh | TANAAB_BREWFILE="Brewfile.work" TANAAB_TARGET="$HOME" bash
-curl -fsSL https://bootbox.tanaab.sh | TANAAB_DOTPKG="dotpkgs/git,dotpkgs/zsh" TANAAB_TARGET="$HOME" bash
-curl -fsSL https://bootbox.tanaab.sh | TANAAB_SSH_KEY="my-vault/id_work:id_work" TANAAB_OP_TOKEN="$TANAAB_OP_TOKEN" bash
+curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | TANAAB_BREWFILE="Brewfile.work" TANAAB_TARGET="$HOME" bash
+curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | TANAAB_DOTPKG="dotpkgs/git,dotpkgs/zsh" TANAAB_TARGET="$HOME" bash
+curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | TANAAB_SSH_KEY="my-vault/id_work:id_work" TANAAB_OP_TOKEN="$TANAAB_OP_TOKEN" bash
 ```
 
 For the complete and current CLI surface, prefer `--help`. That output is the fastest source of
