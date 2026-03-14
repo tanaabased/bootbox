@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /
+Sitemap: https://bootbox.tanaab.sh/sitemap.xml
+Host: https://bootbox.tanaab.sh
+Allow: /bootbox.sh
+Allow: /sitemap.xml

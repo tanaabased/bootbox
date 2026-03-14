@@ -1,0 +1,33 @@
+{
+  "name": "@tanaab/bootbox",
+  "description": "Tanaab based macOS box booting script.",
+  "version": "0.1.0",
+  "author": "Mike Pirog @pirog",
+  "license": "MIT",
+  "repository": "https://github.com/tanaab/bootbox",
+  "bugs": "https://github.com/tanaab/bootbox/issues",
+  "homepage": "https://github.com/tanaab/bootbox",
+  "type": "module",
+  "packageManager": "bun@1.3.4",
+  "engines": {
+    "bun": ">=1.3.0 <1.4.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@lando/leia": "^1.0.0-beta.4",
+    "eslint": "^10.0.3",
+    "eslint-config-prettier": "^10.1.1",
+    "globals": "^17.4.0",
+    "prettier": "^3.5.3",
+    "shellcheck": "^4.1.0"
+  },
+  "scripts": {
+    "build": "bun ./build-dist.js",
+    "build:dist": "bun ./build-dist.js",
+    "format:check": "prettier --check .",
+    "format:write": "prettier --write .",
+    "lint:eslint": "eslint .",
+    "lint:shellcheck": "shellcheck bootbox.sh",
+    "lint": "bun run lint:eslint && bun run format:check && bun run lint:shellcheck"
+  }
+}

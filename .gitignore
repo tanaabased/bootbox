@@ -1,0 +1,7 @@
+.DS_Store
+.tmp
+.netlify
+coverage
+examples/**/.tmp
+node_modules
+reports

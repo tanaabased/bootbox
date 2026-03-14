@@ -1,0 +1,52 @@
+name: Example Tests
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  examples:
+    name: ${{ matrix.example }}
+    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        example:
+          - bootbox-minimal
+          - bootbox-cli-contract
+          - bootbox-dotpkgs-flags
+          - bootbox-dotpkgs-env
+          - bootbox-dotpkgs-force-backup
+          - bootbox-brewfiles-flags
+          - bootbox-brewfiles-env
+          - bootbox-ssh-keys-flags
+    env:
+      HOMEBREW_NO_AUTO_UPDATE: '1'
+      TANAAB_OP_TESTVAULT: ${{ secrets.TANAAB_OP_TESTVAULT }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Prepare release-shaped build
+        uses: tanaabased/prepare-release-action@v1
+        with:
+          version: dev
+          sync: false
+          commands: |
+            bun run build
+            version-injector dist/bootbox.sh --style sh --version "$PREPARE_RELEASE_VERSION"
+      - name: Put prepared bootbox on PATH
+        shell: bash
+        run: echo "$PWD/dist" >> "$GITHUB_PATH"
+      - name: Run Leia-backed example
+        shell: bash
+        run: |
+          mkdir -p examples/.tmp
+          TMPDIR="$PWD/examples/.tmp" ./node_modules/.bin/leia "examples/${{ matrix.example }}/README.md" -c "Destroy tests" --stdin
