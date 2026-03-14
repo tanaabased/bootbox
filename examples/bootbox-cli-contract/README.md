@@ -23,7 +23,7 @@ bootbox.sh --help | grep -- 'TANAAB_DOTPKG'
 test -n "$(bootbox.sh --version)"
 
 # should fail for an unknown option
-bootbox.sh --definitely-bogus > .tmp/invalid.log 2>&1; test "$?" -ne 0
+! bootbox.sh --definitely-bogus > .tmp/invalid.log 2>&1
 
 # should explain the unknown option failure
 grep -F 'Unrecognized option' .tmp/invalid.log

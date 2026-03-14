@@ -10,7 +10,7 @@ key twice: once with the default filename and once with a filename override.
 rm -rf .tmp && mkdir -p .tmp/home
 
 # should have the 1password test token available
-test -n "${TANAAB_OP_TESTVAULT:-}"
+test -n "$TANAAB_OP_TESTVAULT"
 
 # should install the requested ssh keys from 1password
 CI=1 NONINTERACTIVE=1 \

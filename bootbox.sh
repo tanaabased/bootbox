@@ -1528,8 +1528,13 @@ evaluate_dotpkg() {
   CURRENT_DOTPKG_NEEDS_STOW=""
   CURRENT_DOTPKG_CONFLICT_TARGETS=()
 
-  simulate_output="$(simulate_dotpkg "${dotpkg}")"
-  simulate_status="$?"
+  # Capture the simulation result through an if-condition so expected conflict exits
+  # do not trip `set -e` before we can inspect the output and status.
+  if simulate_output="$(simulate_dotpkg "${dotpkg}")"; then
+    simulate_status="0"
+  else
+    simulate_status="$?"
+  fi
   cleaned_output="$(strip_stow_simulation_noise "${simulate_output}")"
 
   if [[ -n "${cleaned_output}" ]]; then
