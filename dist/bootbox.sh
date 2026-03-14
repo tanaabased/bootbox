@@ -79,7 +79,7 @@ tty_tp="$(tty_escape '38;2;0;200;138')"    # #00c88a
 tty_ts="$(tty_escape '38;2;219;39;119')"   # #db2777
 
 # Keep a single top-level assignment so release automation can stamp the entrypoint in place.
-SCRIPT_VERSION="${SCRIPT_VERSION:-$(git describe --tags --always --abbrev=1 2>/dev/null || printf '%s' '0.0.0')}"
+SCRIPT_VERSION="v1.0.0-beta.1"
 
 mask_secret_for_display() {
   local value="$1"
