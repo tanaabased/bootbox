@@ -1,5 +1,7 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
+## v1.0.0-beta.2 - [March 15, 2026](https://github.com/tanaabased/bootbox/releases/tag/v1.0.0-beta.2)
+
 - Moved `netlify.toml` into `/`
 - Reorganized from locations to better comply with Tanaab based guidance on netscripts
 
