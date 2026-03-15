@@ -27,7 +27,7 @@
     "shellcheck": "^4.1.0"
   },
   "scripts": {
-    "build": "bun ./build-dist.js",
+    "build": "bun ./scripts/build-dist.js",
     "format:check": "prettier --check .",
     "format:write": "prettier --write .",
     "lint:eslint": "eslint .",

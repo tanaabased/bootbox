@@ -3,17 +3,16 @@ import { chmod, cp, mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
-const DIST_URL = new URL('./dist/', import.meta.url);
-const REPO_URL = new URL('./', import.meta.url);
+const REPO_URL = new URL('../', import.meta.url);
 const REPO_ROOT = fileURLToPath(REPO_URL);
+const DIST_URL = new URL('./dist/', REPO_URL);
 const PUBLIC_ORIGIN = 'https://bootbox.tanaab.sh';
 const ROBOTS_URL = new URL('./robots.txt', DIST_URL);
 const SITEMAP_URL = new URL('./sitemap.xml', DIST_URL);
-const BOOTBOX_SOURCE_URL = new URL('./bootbox.sh', import.meta.url);
+const BOOTBOX_SOURCE_URL = new URL('./bootbox.sh', REPO_URL);
 const DIST_FILES = [
   ['bootbox.sh', 'bootbox.sh'],
   ['site/index.html', 'index.html'],
-  ['site/netlify.toml', 'netlify.toml'],
 ];
 const EXECUTABLES = ['bootbox.sh'];
 const execFileAsync = promisify(execFile);
@@ -112,8 +111,8 @@ async function resetDist() {
 }
 
 async function copyDistFile(sourcePath, destinationPath) {
-  const sourceUrl = new URL(`./${sourcePath}`, import.meta.url);
-  const destinationUrl = new URL(`./${destinationPath}`, DIST_URL);
+  const sourceUrl = new URL(sourcePath, REPO_URL);
+  const destinationUrl = new URL(destinationPath, DIST_URL);
 
   await cp(sourceUrl, destinationUrl, { force: true });
 

@@ -1,5 +1,8 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
+- Moved `netlify.toml` into `/`
+- Reorganized from locations to better comply with Tanaab based guidance on netscripts
+
 ## v1.0.0-beta.1 - [March 14, 2026](https://github.com/tanaabased/bootbox/releases/tag/v1.0.0-beta.1)
 
 - Added a hosted `bootbox.sh` entrypoint for bootstrapping fresh macOS 26 or newer machines.
