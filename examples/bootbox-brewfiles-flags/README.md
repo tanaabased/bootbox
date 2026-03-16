@@ -13,7 +13,7 @@ rm -rf .tmp && mkdir -p .tmp/home
 # should run bootbox with local and file-url brewfiles from CLI flags
 url_brewfile="file://$(pwd)/Brewfile.url" && \
 CI=1 NONINTERACTIVE=1 \
-bootbox.sh \
+bootbox \
   --target "$(pwd)/.tmp/home" \
   --debug \
   --brewfile Brewfile.base \

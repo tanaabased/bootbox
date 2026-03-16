@@ -14,7 +14,7 @@ test -n "$TANAAB_OP_TESTVAULT"
 
 # should install the requested ssh keys from 1password
 CI=1 NONINTERACTIVE=1 \
-bootbox.sh \
+bootbox \
   --target "$(pwd)/.tmp/home" \
   --ssh-key "omfsw2uztmi2xqpid5g3kiv6ba/id_test" \
   --ssh-key "omfsw2uztmi2xqpid5g3kiv6ba/id_test:id_test_bootbox" \

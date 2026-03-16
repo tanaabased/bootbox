@@ -80,6 +80,14 @@ tty_ts="$(tty_escape '38;2;219;39;119')"   # #db2777
 
 # Keep a single top-level assignment so release automation can stamp the entrypoint in place.
 SCRIPT_VERSION="${SCRIPT_VERSION:-$(git describe --tags --always --abbrev=1 2>/dev/null || printf '%s' '0.0.0')}"
+SCRIPT_NAME_SOURCE="${BASH_SOURCE[0]:-${0}}"
+SCRIPT_NAME="${SCRIPT_NAME_SOURCE##*/}"
+
+case "${SCRIPT_NAME}" in
+  '' | stdin | bash | -bash | sh | -sh)
+    SCRIPT_NAME="bootbox.sh"
+    ;;
+esac
 
 mask_secret_for_display() {
   local value="$1"
@@ -113,6 +121,7 @@ mask_secret_for_display() {
 # see https://github.blog/changelog/2022-05-24-github-actions-re-run-jobs-with-debug-logging/
 DEBUG="${TANAAB_DEBUG:-${DEBUG:-${RUNNER_DEBUG:-}}}"
 FORCE="${TANAAB_FORCE:-}"
+CHECK_CORE=""
 TARGET="${TANAAB_TARGET:-$HOME}"
 BREWFILES_CSV="${TANAAB_BREWFILE:-}"
 DOTPKGS_CSV="${TANAAB_DOTPKG:-}"
@@ -290,7 +299,7 @@ done
 
 usage() {
   cat <<EOS
-Usage: ${tty_dim}[NONINTERACTIVE=1] [CI=1]${tty_reset} ${tty_bold}bootbox.sh${tty_reset} ${tty_dim}[options]${tty_reset}
+Usage: ${tty_dim}[NONINTERACTIVE=1] [CI=1]${tty_reset} ${tty_bold}${SCRIPT_NAME}${tty_reset} ${tty_dim}[options]${tty_reset}
 
 ${tty_tp}Options:${tty_reset}
   --brewfile       installs brewfiles from local paths or URLs ${tty_dim}[default: ${BREWFILES_CSV_DISPLAY}]${tty_reset}
@@ -389,6 +398,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --force)
       FORCE=1
+      shift
+      ;;
+    --check-core)
+      CHECK_CORE="1"
       shift
       ;;
 
@@ -760,6 +773,10 @@ force_enabled() {
   value_enabled "${FORCE:-}"
 }
 
+check_core_mode() {
+  [[ "${CHECK_CORE:-0}" == "1" ]]
+}
+
 # set debug-related envvars for child processes
 if debug_enabled; then
   export HOMEBREW_DEBUG=1
@@ -806,11 +823,11 @@ warn_multi() {
 }
 
 # print version of script
-debug "running bootbox.sh script version: ${SCRIPT_VERSION}"
+debug "running ${SCRIPT_NAME} script version: ${SCRIPT_VERSION}"
 
 # debug raw options
 # these are options that have not yet been validated or mutated e.g. the ones the user has supplied or defaults
-debug "raw args bootbox.sh $ORIGOPTS"
+debug "raw args ${SCRIPT_NAME} $ORIGOPTS"
 debug raw CI="${CI:-}"
 debug raw NONINTERACTIVE="${NONINTERACTIVE:-}"
 debug raw ARCH="$ARCH"
@@ -1039,6 +1056,7 @@ plan_homebrew() {
     return 0
   fi
 
+  debug "Homebrew was not found in the expected locations or in PATH"
   BREW_NEEDS_INSTALL="1"
   plan_action "${tty_tp}install${tty_reset} ${tty_ts}homebrew${tty_reset} ${tty_dim}using the official installer (expected prefix: ${tty_ts}${HOMEBREW_PREFIX}${tty_dim})${tty_reset}"
 }
@@ -1096,8 +1114,30 @@ plan_core_homebrew_packages() {
   done
 
   if [[ "${#CORE_BREW_DISPLAY_TO_INSTALL[@]}" -gt 0 ]]; then
+    debug "missing core Homebrew packages: $(array_join ", " CORE_BREW_DISPLAY_TO_INSTALL)"
     plan_action "${tty_tp}install${tty_reset} core homebrew packages: ${tty_ts}$(array_join ", " CORE_BREW_DISPLAY_TO_INSTALL)${tty_reset}"
+  elif [[ "${BREW_NEEDS_INSTALL:-0}" != "1" ]]; then
+    debug "core Homebrew packages are already installed"
   fi
+}
+
+run_check_core() {
+  debug "running hidden --check-core mode"
+  plan_homebrew
+  plan_core_homebrew_packages
+
+  if [[ "${BREW_NEEDS_INSTALL:-0}" == "1" ]]; then
+    debug "check-core result: Homebrew is missing"
+    exit 1
+  fi
+
+  if [[ "${#CORE_BREW_DISPLAY_TO_INSTALL[@]}" -gt 0 ]]; then
+    debug "check-core result: core Homebrew packages are missing"
+    exit 1
+  fi
+
+  debug "check-core result: core requirements are satisfied"
+  exit 0
 }
 
 install_core_homebrew_packages() {
@@ -1770,6 +1810,10 @@ version_compare() (
 
   return 0
 )
+
+if check_core_mode; then
+  run_check_core
+fi
 
 # abort if we dont have curl, or the right version of it
 if [[ -z "$(find_tool curl)" ]]; then

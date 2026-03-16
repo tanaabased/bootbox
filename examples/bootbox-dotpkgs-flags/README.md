@@ -11,7 +11,7 @@ rm -rf .tmp && mkdir -p .tmp/home
 
 # should stow the requested dotpkgs from CLI flags
 CI=1 NONINTERACTIVE=1 \
-bootbox.sh \
+bootbox \
   --target "$(pwd)/.tmp/home" \
   --dotpkg dotpkgs/git \
   --dotpkg dotpkgs/zsh \
