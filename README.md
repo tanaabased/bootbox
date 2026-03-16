@@ -84,8 +84,21 @@ curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | TANAAB_DOTPKG="dotpkgs/git,dot
 curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | TANAAB_SSH_KEY="my-vault/id_work:id_work" TANAAB_OP_TOKEN="$TANAAB_OP_TOKEN" bash
 ```
 
-For the complete and current CLI surface, prefer `--help`. That output is the fastest source of
-truth for supported flags, environment variables, and guardrails.
+For the complete and current documented CLI surface, prefer `--help`. That output is the fastest
+source of truth for supported public flags, environment variables, and guardrails.
+
+For scripts that only need to know whether Bootbox's built-in Homebrew base is already satisfied,
+there is also a hidden `--check-core` flag. It exits `0` when Homebrew plus Bootbox's core
+packages are already installed, and exits `1` otherwise. It intentionally stays out of `--help`,
+and it does not check Brewfile entries, dotpackages, SSH keys, or target permissions.
+
+```sh
+if bootbox --check-core >/dev/null 2>&1; then
+  echo "bootbox core is ready"
+else
+  echo "bootbox core is missing dependencies"
+fi
+```
 
 ## Development
 

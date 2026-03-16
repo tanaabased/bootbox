@@ -13,7 +13,7 @@ rm -rf .tmp && mkdir -p .tmp/home
 CI=1 NONINTERACTIVE=1 \
 TANAAB_DOTPKG="dotpkgs/git,dotpkgs/vim" \
 TANAAB_TARGET="$(pwd)/.tmp/home" \
-bootbox.sh > .tmp/setup.log 2>&1
+bootbox > .tmp/setup.log 2>&1
 ```
 
 ## Testing

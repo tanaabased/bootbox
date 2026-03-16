@@ -20,7 +20,7 @@ CI=1 NONINTERACTIVE=1 \
 TANAAB_DOTPKG="dotpkgs/git" \
 TANAAB_FORCE=1 \
 TANAAB_TARGET="$(pwd)/.tmp/home" \
-bootbox.sh > .tmp/setup.log 2>&1
+bootbox > .tmp/setup.log 2>&1
 ```
 
 ## Testing

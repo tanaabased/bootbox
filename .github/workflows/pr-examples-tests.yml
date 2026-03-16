@@ -1,4 +1,4 @@
-name: Example Tests
+name: Examples Tests
 
 on:
   pull_request:
@@ -42,6 +42,9 @@ jobs:
           commands: |
             bun run build
             version-injector dist/bootbox.sh --style sh --version "$PREPARE_RELEASE_VERSION"
+      - name: Create bootbox alias for Leia examples
+        shell: bash
+        run: ln -sf bootbox.sh dist/bootbox
       - name: Put prepared bootbox on PATH
         shell: bash
         run: echo "$PWD/dist" >> "$GITHUB_PATH"
