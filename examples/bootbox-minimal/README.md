@@ -12,10 +12,7 @@ toolchain are satisfied afterwards.
 rm -rf .tmp && mkdir -p .tmp/home
 
 # should remove a core formula first when Homebrew is already present
-BREW_BIN="$(command -v brew || true)"
-if [[ -z "${BREW_BIN}" ]] && [[ -x /opt/homebrew/bin/brew ]]; then BREW_BIN="/opt/homebrew/bin/brew"; fi
-if [[ -z "${BREW_BIN}" ]] && [[ -x /usr/local/bin/brew ]]; then BREW_BIN="/usr/local/bin/brew"; fi
-if [[ -n "${BREW_BIN}" ]]; then "${BREW_BIN}" uninstall --formula --force stow >/dev/null 2>&1 || true; fi
+brew uninstall --formula --force stow
 ```
 
 ## Testing

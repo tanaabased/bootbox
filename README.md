@@ -46,8 +46,6 @@ If you need help generating a `Brewfile`, see [tanaabased/brewgen](https://githu
 
 The `examples/` directory contains Leia-backed scenario folders for the main supported flows,
 including multi-Brewfile installs, dotpackage installs, and live 1Password SSH key installation.
-In CI, those scenarios run against a temporary `bootbox` alias to the release-shaped
-`bootbox.sh` entrypoint.
 
 ## Configuration
 
