@@ -1,5 +1,7 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
+## v1.0.0-beta.3 - [March 16, 2026](https://github.com/tanaabased/bootbox/releases/tag/v1.0.0-beta.3)
+
 - Added a hidden `--check-core` mode that lets scripts verify core dependencies by exit status.
 - Updated Leia example coverage invoke `bootbox` alias in CI while keeping `dist/bootbox.sh` as the only published artifact.
 
