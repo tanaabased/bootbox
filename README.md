@@ -42,6 +42,8 @@ bootbox --ssh-key "my-vault/id_work" --op-token "$TANAAB_OP_TOKEN"
 
 If you are working from a local checkout instead, replace `bootbox` with `./bootbox.sh`.
 
+If you need help generating a `Brewfile`, see [tanaabased/brewgen](https://github.com/tanaabased/brewgen).
+
 The `examples/` directory contains Leia-backed scenario folders for the main supported flows,
 including multi-Brewfile installs, dotpackage installs, and live 1Password SSH key installation.
 
