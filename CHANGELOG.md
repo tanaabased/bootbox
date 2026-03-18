@@ -1,5 +1,8 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
+- Fixed debug logging to mask 1Password service account tokens.
+- Fixed `running` status labels to use the shared Tanaab action color.
+
 ## v1.0.0-beta.3 - [March 16, 2026](https://github.com/tanaabased/bootbox/releases/tag/v1.0.0-beta.3)
 
 - Added a hidden `--check-core` mode that lets scripts verify core dependencies by exit status.
