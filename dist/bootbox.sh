@@ -64,6 +64,7 @@ else
 fi
 tty_mkbold() { tty_escape "1;$1"; }
 tty_mkdim() { tty_escape "2;$1"; }
+# shellcheck disable=SC2034  # Keep the shared palette available even when a given change doesn't use blue.
 tty_blue="$(tty_escape 34)"
 tty_bold="$(tty_mkbold 39)"
 tty_dim="$(tty_mkdim 39)"
@@ -79,7 +80,7 @@ tty_tp="$(tty_escape '38;2;0;200;138')"    # #00c88a
 tty_ts="$(tty_escape '38;2;219;39;119')"   # #db2777
 
 # Keep a single top-level assignment so release automation can stamp the entrypoint in place.
-SCRIPT_VERSION="v1.0.0-beta.3"
+SCRIPT_VERSION="v1.0.0-beta.4"
 SCRIPT_NAME_SOURCE="${BASH_SOURCE[0]:-${0}}"
 SCRIPT_NAME="${SCRIPT_NAME_SOURCE##*/}"
 
@@ -113,6 +114,14 @@ mask_secret_for_display() {
 
   suffix_start=$((length - suffix_length))
   printf "%s...%s" "${value:0:${prefix_length}}" "${value:${suffix_start}:${suffix_length}}"
+}
+
+op_token_for_display() {
+  if [[ -n "${OP_TOKEN:-}" ]]; then
+    mask_secret_for_display "${OP_TOKEN}"
+  else
+    printf "none"
+  fi
 }
 
 # Set cheap defaults needed by usage/arg parsing first so --help/--version stay fast.
@@ -151,15 +160,6 @@ fi
 BREWFILES_CSV_DISPLAY="${BREWFILES_CSV:-none}"
 DOTPKGS_CSV_DISPLAY="${DOTPKGS_CSV:-none}"
 SSH_KEYS_CSV_DISPLAY="${SSH_KEYS_CSV:-none}"
-
-if [[ -n "${OP_TOKEN:-}" ]]; then
-  OP_TOKEN_DISPLAY="$(mask_secret_for_display "${OP_TOKEN}")"
-else
-  OP_TOKEN_DISPLAY="none"
-fi
-
-# preserve originals OPTZ
-ORIGOPTS="$*"
 
 trim_whitespace() {
   local value="$1"
@@ -304,8 +304,8 @@ Usage: ${tty_dim}[NONINTERACTIVE=1] [CI=1]${tty_reset} ${tty_bold}${SCRIPT_NAME}
 ${tty_tp}Options:${tty_reset}
   --brewfile       installs brewfiles from local paths or URLs ${tty_dim}[default: ${BREWFILES_CSV_DISPLAY}]${tty_reset}
   --dotpkg         stows dot packages into target ${tty_dim}[default: ${DOTPKGS_CSV_DISPLAY}]${tty_reset}
-  --ssh-key        installs 1password ssh keys into target .ssh ${tty_dim}[default: ${SSH_KEYS_CSV_DISPLAY}]${tty_reset}
-  --op-token       1password service account token ${tty_dim}[default: ${OP_TOKEN_DISPLAY}]${tty_reset}
+  --ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] ${tty_dim}[default: ${SSH_KEYS_CSV_DISPLAY}]${tty_reset}
+  --op-token       auths with 1password service account token ${tty_dim}[default: $(op_token_for_display)]${tty_reset}
   --target         installs dotpkgs and identities relative to here ${tty_dim}[default: ${TARGET}]${tty_reset}
   --version        shows version of this script
   --debug          shows debug messages
@@ -827,7 +827,6 @@ debug "running ${SCRIPT_NAME} script version: ${SCRIPT_VERSION}"
 
 # debug raw options
 # these are options that have not yet been validated or mutated e.g. the ones the user has supplied or defaults
-debug "raw args ${SCRIPT_NAME} $ORIGOPTS"
 debug raw CI="${CI:-}"
 debug raw NONINTERACTIVE="${NONINTERACTIVE:-}"
 debug raw ARCH="$ARCH"
@@ -836,7 +835,7 @@ debug raw DOTPKGS="$(array_join "," DOTPKGS)"
 debug raw DEBUG="$DEBUG"
 debug raw FORCE="$FORCE"
 debug raw SSH_KEYS="$(array_join "," SSH_KEYS)"
-debug raw OP_TOKEN="${OP_TOKEN_DISPLAY}"
+debug raw OP_TOKEN="$(op_token_for_display)"
 debug raw HOMEBREW_PREFIX="$HOMEBREW_PREFIX"
 debug raw TARGET="$TARGET"
 debug raw OS="$OS"
@@ -1345,7 +1344,7 @@ op_read_ssh_key_to_file() {
 
   secret_ref="$(ssh_key_secret_ref "${ssh_key}")"
   ssh_key_base="$(ssh_key_spec_base "${ssh_key}")"
-  debug "${tty_blue}running${tty_reset}" "${OP_CLI}" read "${secret_ref}" ">" "${destination}"
+  debug "${tty_tp}running${tty_reset}" "${OP_CLI}" read "${secret_ref}" ">" "${destination}"
 
   if ! (
     umask 077
@@ -1917,7 +1916,7 @@ if [[ -z "${NONINTERACTIVE-}" ]]; then
     fi
   fi
 else
-  log "${tty_bold}running${tty_reset} in ${tty_yellow}non-interactive mode${tty_reset} ${tty_dim}because \$NONINTERACTIVE is set${tty_reset}"
+  log "${tty_tp}running${tty_reset} in ${tty_yellow}non-interactive mode${tty_reset} ${tty_dim}because \$NONINTERACTIVE is set${tty_reset}"
 fi
 
 ####################################################################### script
@@ -1931,7 +1930,7 @@ getc() {
 }
 
 execute() {
-  debug "${tty_blue}running${tty_reset}" "$@"
+  debug "${tty_tp}running${tty_reset}" "$@"
   if ! "$@"; then
     abort "$(printf "Failed during: %s" "$(shell_join "$@")")"
   fi

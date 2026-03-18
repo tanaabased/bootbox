@@ -1,5 +1,7 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
+## v1.0.0-beta.4 - [March 18, 2026](https://github.com/tanaabased/bootbox/releases/tag/v1.0.0-beta.4)
+
 - Fixed debug logging to mask 1Password service account tokens.
 - Fixed `running` status labels to use the shared Tanaab action color.
 
