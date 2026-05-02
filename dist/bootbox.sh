@@ -80,7 +80,7 @@ tty_tp="$(tty_escape '38;2;0;200;138')"    # #00c88a
 tty_ts="$(tty_escape '38;2;219;39;119')"   # #db2777
 
 # Keep a single top-level assignment so release automation can stamp the entrypoint in place.
-SCRIPT_VERSION="v1.0.0-beta.4"
+SCRIPT_VERSION="v1.0.0-beta.5"
 SCRIPT_NAME_SOURCE="${BASH_SOURCE[0]:-${0}}"
 SCRIPT_NAME="${SCRIPT_NAME_SOURCE##*/}"
 
@@ -711,7 +711,7 @@ default_homebrew_prefix() {
 # core packages that should be present regardless of any user-provided Brewfile
 declare -a TANAAB_CORE_BREW_PACKAGES=(
   "formula|git|git"
-  "cask|1password-cli|op"
+  "cask|1password-cli@beta|op"
   "formula|curl|curl"
   "formula|zsh|zsh"
   "formula|jq|jq"
