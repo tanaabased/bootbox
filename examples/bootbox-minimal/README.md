@@ -44,6 +44,12 @@ command -v stow >/dev/null || test -x /opt/homebrew/bin/stow || test -x /usr/loc
 
 # should make 1password cli available
 command -v op >/dev/null || test -x /opt/homebrew/bin/op || test -x /usr/local/bin/op
+
+# should install the beta 1password cli cask
+brew list --cask 1password-cli@beta
+
+# should expose 1password environment support
+op run --help | grep -F -- '--environment'
 ```
 
 ## Destroy tests

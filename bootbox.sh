@@ -711,7 +711,7 @@ default_homebrew_prefix() {
 # core packages that should be present regardless of any user-provided Brewfile
 declare -a TANAAB_CORE_BREW_PACKAGES=(
   "formula|git|git"
-  "cask|1password-cli|op"
+  "cask|1password-cli@beta|op"
   "formula|curl|curl"
   "formula|zsh|zsh"
   "formula|jq|jq"
