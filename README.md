@@ -26,6 +26,9 @@ Bootbox is designed to be run directly from the hosted script at
 - It supports installing into the default home directory target or a custom `--target`.
 - For 1Password-backed SSH keys, provide a service account token with `--op-token`,
   `TANAAB_OP_TOKEN`, or `OP_SERVICE_ACCOUNT_TOKEN`.
+- Bootbox currently installs the beta 1Password CLI cask because downstream machine profiles need
+  Environment commands such as `op run --environment`. This should return to stable
+  `1password-cli` once stable 1Password CLI includes that support.
 - The hosted URL serves the generated `dist/bootbox.sh` entrypoint used for releases.
 
 ## Usage
