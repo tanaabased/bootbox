@@ -61,6 +61,7 @@ Bootbox keeps its configuration surface intentionally small.
 - `BOOTBOX_TARGET`: install target directory
 - `BOOTBOX_FORCE`: enables supported overwrite behavior
 - `BOOTBOX_QUIET`: suppresses Bootbox status output for wrapper callers
+- `BOOTBOX_NO_SUDO`: disables sudo checks, prompts, and elevation
 - `BOOTBOX_DEBUG`: enables debug logging
 - `NONINTERACTIVE` and `CI`: disable prompts for automated runs
 
@@ -103,6 +104,10 @@ else
   echo "bootbox core is missing dependencies"
 fi
 ```
+
+Wrapper scripts that already know sudo is unavailable can pass `--no-sudo` or
+`BOOTBOX_NO_SUDO=1`. In that mode Bootbox does not probe, prompt for, or invoke sudo; requested
+work must already be writable by the current user.
 
 ## Development
 

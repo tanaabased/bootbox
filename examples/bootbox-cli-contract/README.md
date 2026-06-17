@@ -33,6 +33,7 @@ bootbox --help | grep -F -- '--target'
 bootbox --help | grep -F -- '--version'
 bootbox --help | grep -F -- '--debug'
 bootbox --help | grep -F -- '--quiet'
+bootbox --help | grep -F -- '--no-sudo'
 bootbox --help | grep -F -- '--force'
 bootbox --help | grep -F -- '--yes'
 
@@ -44,6 +45,7 @@ bootbox --help | grep -F 'BOOTBOX_OP_TOKEN same as --op-token; falls back to OP_
 bootbox --help | grep -F 'BOOTBOX_TARGET   same as --target'
 bootbox --help | grep -F 'BOOTBOX_FORCE    same as --force'
 bootbox --help | grep -F 'BOOTBOX_QUIET    same as --quiet'
+bootbox --help | grep -F 'BOOTBOX_NO_SUDO  same as --no-sudo'
 bootbox --help | grep -F 'BOOTBOX_DEBUG    same as --debug'
 bootbox --help | grep -F 'NONINTERACTIVE   same as --yes'
 bootbox --help | grep -F 'CI               runs in CI mode and disables prompts'
@@ -80,12 +82,15 @@ if BOOTBOX_OP_TOKEN='secret-example-value' bootbox --help | grep -F 'secret-exam
 # should allow an inline empty op token to mean no token
 BOOTBOX_OP_TOKEN='secret-example-value' bootbox --op-token= --help | grep -F -- '--op-token       auths with 1password service account token [default: none]'
 
-# should show debug, quiet, and force defaults
+# should show debug, quiet, no-sudo, and force defaults
 bootbox --help | grep -F -- '--debug          shows debug messages [default: off]'
 bootbox --debug --help | grep -F -- '--debug          shows debug messages [default: on]'
 bootbox --help | grep -F -- '--quiet          suppresses bootbox status output [default: off]'
 bootbox --quiet --help | grep -F -- '--quiet          suppresses bootbox status output [default: on]'
 BOOTBOX_QUIET=1 bootbox --help | grep -F -- '--quiet          suppresses bootbox status output [default: on]'
+bootbox --help | grep -F -- '--no-sudo        disables sudo checks, prompts, and elevation [default: off]'
+bootbox --no-sudo --help | grep -F -- '--no-sudo        disables sudo checks, prompts, and elevation [default: on]'
+BOOTBOX_NO_SUDO=1 bootbox --help | grep -F -- '--no-sudo        disables sudo checks, prompts, and elevation [default: on]'
 bootbox --help | grep -F -- '--force          forces supported overwrite operations [default: off]'
 bootbox --force --help | grep -F -- '--force          forces supported overwrite operations [default: on]'
 

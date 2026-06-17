@@ -50,6 +50,8 @@ When this file conflicts with broader defaults, this file wins for work in `boot
   for Bootbox's built-in Homebrew core only.
 - Keep `--check-core` quiet under normal operation; if its behavior changes, update the CLI
   contract example explicitly.
+- Keep `--no-sudo` as a strict no-elevation mode: no sudo probes, prompts, timestamp cleanup, or
+  sudo-backed helper operations.
 - Keep planned-action output aligned with actual execution order.
 
 ## Secrets And Logging

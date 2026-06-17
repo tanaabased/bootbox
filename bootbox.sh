@@ -178,6 +178,7 @@ env_list_value() {
 DEBUG="$(env_value BOOTBOX_DEBUG TANAAB_DEBUG "${DEBUG:-${RUNNER_DEBUG:-}}")"
 FORCE="$(env_value BOOTBOX_FORCE TANAAB_FORCE)"
 QUIET="$(env_value BOOTBOX_QUIET TANAAB_QUIET)"
+NO_SUDO="${BOOTBOX_NO_SUDO:-}"
 CHECK_CORE=""
 TARGET="$(env_value BOOTBOX_TARGET TANAAB_TARGET "$HOME")"
 BREWFILES_CSV="$(env_list_value BOOTBOX_BREWFILE BOOTBOX_BREWFILES TANAAB_BREWFILE TANAAB_BREWFILES)"
@@ -331,6 +332,7 @@ usage() {
   local debug_display="off"
   local dotpkgs_display
   local force_display="off"
+  local no_sudo_display="off"
   local quiet_display="off"
   local ssh_keys_display
 
@@ -353,6 +355,10 @@ usage() {
     quiet_display="on"
   fi
 
+  if value_enabled "${NO_SUDO:-}"; then
+    no_sudo_display="on"
+  fi
+
   cat <<EOS
 Usage: ${tty_dim}[NONINTERACTIVE=1] [CI=1] [BOOTBOX_*...]${tty_reset} ${tty_bold}${SCRIPT_NAME}${tty_reset} ${tty_dim}[options]${tty_reset}
 
@@ -365,6 +371,7 @@ ${tty_tp}Options:${tty_reset}
   --version        shows version of this script
   --debug          shows debug messages ${tty_dim}[default: ${debug_display}]${tty_reset}
   --quiet          suppresses bootbox status output ${tty_dim}[default: ${quiet_display}]${tty_reset}
+  --no-sudo        disables sudo checks, prompts, and elevation ${tty_dim}[default: ${no_sudo_display}]${tty_reset}
   --force          forces supported overwrite operations ${tty_dim}[default: ${force_display}]${tty_reset}
   -h, --help       displays this help message
   -y, --yes        runs with all defaults and no prompts, sets NONINTERACTIVE=1
@@ -377,6 +384,7 @@ ${tty_tp}Environment Variables:${tty_reset}
   BOOTBOX_TARGET   same as --target
   BOOTBOX_FORCE    same as --force
   BOOTBOX_QUIET    same as --quiet
+  BOOTBOX_NO_SUDO  same as --no-sudo
   BOOTBOX_DEBUG    same as --debug
   NONINTERACTIVE   same as --yes
   CI               runs in CI mode and disables prompts
@@ -486,6 +494,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --quiet)
       QUIET=1
+      shift
+      ;;
+    --no-sudo)
+      NO_SUDO=1
       shift
       ;;
     --force)
@@ -861,6 +873,14 @@ quiet_enabled() {
   value_enabled "${QUIET:-}"
 }
 
+no_sudo_enabled() {
+  value_enabled "${NO_SUDO:-}"
+}
+
+sudo_enabled() {
+  ! no_sudo_enabled
+}
+
 check_core_mode() {
   [[ "${CHECK_CORE:-0}" == "1" ]]
 }
@@ -1073,6 +1093,11 @@ find_homebrew() {
 have_sudo_access() {
   local GROUPS_CMD
   local -a SUDO=("/usr/bin/sudo")
+
+  if no_sudo_enabled; then
+    HAVE_SUDO_ACCESS="1"
+    return 1
+  fi
 
   GROUPS_CMD="$(which groups)"
 
@@ -1980,6 +2005,24 @@ refresh_permission_dirs
 
 # @NOTE: in order to do what we want here does the user actually need to be a sudoer?
 
+if no_sudo_enabled && [[ "${BREW_NEEDS_INSTALL:-0}" == "1" ]]; then
+  abort_multi "$(cat <<EOABORT
+Homebrew is missing and Bootbox is running with ${tty_bold}--no-sudo${tty_reset}.
+install Homebrew from a privileged machine-prep layer first, then rerun Bootbox without requiring sudo.
+for more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
+EOABORT
+)"
+fi
+
+if needs_sudo && no_sudo_enabled; then
+  abort_multi "$(cat <<EOABORT
+Bootbox is running with ${tty_bold}--no-sudo${tty_reset}, but ${tty_bold}${USER}${tty_reset} cannot write to ${tty_red}${TARGET}${tty_reset} or the expected Homebrew location ${tty_red}${HOMEBREW_PREFIX}${tty_reset}.
+prepare writable Homebrew and target paths in the wrapper or machine-prep layer, or use --target to install into a directory ${tty_bold}${USER}${tty_reset} can write to.
+for more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
+EOABORT
+)"
+fi
+
 if needs_sudo && ! have_sudo_access; then
   abort_multi "$(cat <<EOABORT
 ${tty_bold}${USER}${tty_reset} cannot write to ${tty_red}${TARGET}${tty_reset} or the expected Homebrew location ${tty_red}${HOMEBREW_PREFIX}${tty_reset} and is not a ${tty_bold}sudo${tty_reset} user.
@@ -2030,7 +2073,7 @@ execute() {
 
 execute_sudo() {
   local -a args=("$@")
-  if [[ "${EUID:-${UID}}" != "0" ]] && have_sudo_access; then
+  if sudo_enabled && [[ "${EUID:-${UID}}" != "0" ]] && have_sudo_access; then
     if [[ -n "${SUDO_ASKPASS-}" ]]; then
       args=("-A" "${args[@]}")
     fi
@@ -2061,7 +2104,7 @@ auto_mkdirp() {
   local perm_dir
   perm_dir="$(find_first_existing_parent "$dir")"
 
-  if have_sudo_access && [[ ! -w "$perm_dir" ]]; then
+  if sudo_enabled && have_sudo_access && [[ ! -w "$perm_dir" ]]; then
     execute_sudo mkdir -p "$dir"
   else
     execute mkdir -p "$dir"
@@ -2077,7 +2120,7 @@ auto_mv() {
   perm_source="$(find_first_existing_parent "$source")"
   perm_dest="$(find_first_existing_parent "$dest")"
 
-  if have_sudo_access && [[ ! -w "$perm_source" ||  ! -w "$perm_dest" ]]; then
+  if sudo_enabled && have_sudo_access && [[ ! -w "$perm_source" ||  ! -w "$perm_dest" ]]; then
     execute_sudo mv -f "$source" "$dest"
   else
     execute mv -f "$source" "$dest"
@@ -2091,7 +2134,7 @@ auto_cp_follow() {
   local perm_dest
   perm_dest="$(find_first_existing_parent "$dest")"
 
-  if have_sudo_access && [[ ! -w "$perm_dest" ]]; then
+  if sudo_enabled && have_sudo_access && [[ ! -w "$perm_dest" ]]; then
     execute_sudo cp -RL "$source" "$dest"
   else
     execute cp -RL "$source" "$dest"
@@ -2104,7 +2147,7 @@ auto_rm() {
   local perm_dir
   perm_dir="$(find_first_existing_parent "$path")"
 
-  if have_sudo_access && [[ ! -w "$perm_dir" ]]; then
+  if sudo_enabled && have_sudo_access && [[ ! -w "$perm_dir" ]]; then
     execute_sudo rm -f "$path"
   else
     execute rm -f "$path"
@@ -2118,7 +2161,7 @@ auto_chmod() {
   local perm_dir
   perm_dir="$(find_first_existing_parent "$path")"
 
-  if have_sudo_access && [[ ! -w "$perm_dir" ]]; then
+  if sudo_enabled && have_sudo_access && [[ ! -w "$perm_dir" ]]; then
     execute_sudo chmod "${mode}" "$path"
   else
     execute chmod "${mode}" "$path"
@@ -2126,7 +2169,7 @@ auto_chmod() {
 }
 
 # Invalidate sudo timestamp before exiting (if it wasn't active before).
-if [[ -x /usr/bin/sudo ]] && ! /usr/bin/sudo -n -v 2>/dev/null; then
+if sudo_enabled && [[ -x /usr/bin/sudo ]] && ! /usr/bin/sudo -n -v 2>/dev/null; then
   trap '/usr/bin/sudo -k' EXIT
 fi
 
@@ -2141,7 +2184,7 @@ if [[ -z "${NONINTERACTIVE-}" ]] && have_planned_actions; then
 fi
 
 # flag for password here if needed
-if needs_sudo; then
+if sudo_enabled && needs_sudo; then
   log "please enter ${tty_bold}sudo${tty_reset} password:"
   execute_sudo true
 fi
