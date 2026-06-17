@@ -3,4 +3,5 @@ Disallow: /
 Sitemap: https://bootbox.tanaab.sh/sitemap.xml
 Host: https://bootbox.tanaab.sh
 Allow: /bootbox.sh
+Allow: /llms.txt
 Allow: /sitemap.xml

@@ -1,5 +1,7 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
+## v1.0.0-beta.6 - [June 17, 2026](https://github.com/tanaabased/bootbox/releases/tag/v1.0.0-beta.6)
+
 - Added `--no-sudo` and `BOOTBOX_NO_SUDO` for no-elevation bootstrap flows. ([#6](https://github.com/tanaabased/bootbox/pull/6))
 - Added `--quiet` and `BOOTBOX_QUIET` for wrapper-friendly status output suppression. ([#6](https://github.com/tanaabased/bootbox/pull/6))
 - Changed the public environment variable namespace to `BOOTBOX_*`. ([#6](https://github.com/tanaabased/bootbox/pull/6))
