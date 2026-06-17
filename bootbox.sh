@@ -29,7 +29,7 @@ MACOS_OLDEST_SUPPORTED="26.0"
 REQUIRED_CURL_VERSION="7.41.0"
 
 abort() {
-  printf "%s\n" "$@" >&2
+  printf "error: %s\n" "$@" >&2
   exit 1
 }
 
@@ -37,12 +37,12 @@ abort() {
 # Single brackets are needed here for POSIX compatibility
 # shellcheck disable=SC2292
 if [ -z "${BASH_VERSION:-}" ]; then
-  abort "Bash is required to interpret this script."
+  abort "bash is required to interpret this script."
 fi
 
 # Check if script is run with force-interactive mode in CI
 if [[ -n "${CI-}" && -n "${INTERACTIVE-}" ]]; then
-  abort "Cannot run force-interactive mode in CI."
+  abort "cannot run force-interactive mode in CI."
 fi
 
 # Check if both `INTERACTIVE` and `NONINTERACTIVE` are set
@@ -54,7 +54,7 @@ fi
 
 # Check if script is run in POSIX mode
 if [[ -n "${POSIXLY_CORRECT+1}" ]]; then
-  abort 'Bash must not run in POSIX mode. Please unset POSIXLY_CORRECT and try again.'
+  abort 'bash must not run in POSIX mode. please unset POSIXLY_CORRECT and try again.'
 fi
 
 if [[ -t 1 ]]; then
@@ -80,7 +80,7 @@ tty_tp="$(tty_escape '38;2;0;200;138')"    # #00c88a
 tty_ts="$(tty_escape '38;2;219;39;119')"   # #db2777
 
 # Keep a single top-level assignment so release automation can stamp the entrypoint in place.
-SCRIPT_VERSION="${SCRIPT_VERSION:-$(git describe --tags --always --abbrev=1 2>/dev/null || printf '%s' '0.0.0')}"
+SCRIPT_VERSION="${SCRIPT_VERSION:-$(git describe --tags --always --abbrev=1 2>/dev/null || printf '%s' '0.0.0-unreleased')}"
 SCRIPT_NAME_SOURCE="${BASH_SOURCE[0]:-${0}}"
 SCRIPT_NAME="${SCRIPT_NAME_SOURCE##*/}"
 
@@ -124,42 +124,72 @@ op_token_for_display() {
   fi
 }
 
+value_enabled() {
+  case "${1:-}" in
+    '' | 0 | false | FALSE | False | no | NO | No | off | OFF | Off)
+      return 1
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+}
+
+env_value() {
+  local preferred_name="$1"
+  local legacy_name="$2"
+  local fallback="${3-}"
+  local preferred_value="${!preferred_name-}"
+  local legacy_value="${!legacy_name-}"
+
+  if [[ -n "${preferred_value}" ]]; then
+    printf "%s" "${preferred_value}"
+  elif [[ -n "${legacy_value}" ]]; then
+    printf "%s" "${legacy_value}"
+  else
+    printf "%s" "${fallback}"
+  fi
+}
+
+env_list_value() {
+  local preferred_name="$1"
+  local preferred_plural_name="$2"
+  local legacy_name="$3"
+  local legacy_plural_name="$4"
+  local primary
+  local secondary
+
+  primary="${!preferred_name-}"
+  secondary="${!preferred_plural_name-}"
+  if [[ -n "${primary}" || -n "${secondary}" ]]; then
+    printf "%s%s%s" "${primary}" "${primary:+${secondary:+,}}" "${secondary}"
+    return 0
+  fi
+
+  primary="${!legacy_name-}"
+  secondary="${!legacy_plural_name-}"
+  printf "%s%s%s" "${primary}" "${primary:+${secondary:+,}}" "${secondary}"
+}
+
 # Set cheap defaults needed by usage/arg parsing first so --help/--version stay fast.
 #
 # RUNNER_DEBUG is used here so we can get good debug output when toggled in GitHub Actions
 # see https://github.blog/changelog/2022-05-24-github-actions-re-run-jobs-with-debug-logging/
-DEBUG="${TANAAB_DEBUG:-${DEBUG:-${RUNNER_DEBUG:-}}}"
-FORCE="${TANAAB_FORCE:-}"
+DEBUG="$(env_value BOOTBOX_DEBUG TANAAB_DEBUG "${DEBUG:-${RUNNER_DEBUG:-}}")"
+FORCE="$(env_value BOOTBOX_FORCE TANAAB_FORCE)"
+QUIET="$(env_value BOOTBOX_QUIET TANAAB_QUIET)"
+NO_SUDO="${BOOTBOX_NO_SUDO:-}"
 CHECK_CORE=""
-TARGET="${TANAAB_TARGET:-$HOME}"
-BREWFILES_CSV="${TANAAB_BREWFILE:-}"
-DOTPKGS_CSV="${TANAAB_DOTPKG:-}"
-OP_TOKEN="${TANAAB_OP_TOKEN:-${OP_SERVICE_ACCOUNT_TOKEN:-}}"
-SSH_KEYS_CSV="${TANAAB_SSH_KEY:-}"
-
-# accommodate TANAAB_BREWFILES as well
-if [[ -n "${TANAAB_BREWFILES:-}" ]]; then
-  BREWFILES_CSV="${BREWFILES_CSV}${BREWFILES_CSV:+,}${TANAAB_BREWFILES}"
-fi
-
-# accommodate TANAAB_DOTPKGS as well
-if [[ -n "${TANAAB_DOTPKGS:-}" ]]; then
-  DOTPKGS_CSV="${DOTPKGS_CSV}${DOTPKGS_CSV:+,}${TANAAB_DOTPKGS}"
-fi
-
-# accommodate TANAAB_SSH_KEYS as well
-if [[ -n "${TANAAB_SSH_KEYS:-}" ]]; then
-  SSH_KEYS_CSV="${SSH_KEYS_CSV}${SSH_KEYS_CSV:+,}${TANAAB_SSH_KEYS}"
-fi
+TARGET="$(env_value BOOTBOX_TARGET TANAAB_TARGET "$HOME")"
+BREWFILES_CSV="$(env_list_value BOOTBOX_BREWFILE BOOTBOX_BREWFILES TANAAB_BREWFILE TANAAB_BREWFILES)"
+DOTPKGS_CSV="$(env_list_value BOOTBOX_DOTPKG BOOTBOX_DOTPKGS TANAAB_DOTPKG TANAAB_DOTPKGS)"
+OP_TOKEN="$(env_value BOOTBOX_OP_TOKEN TANAAB_OP_TOKEN "${OP_SERVICE_ACCOUNT_TOKEN:-}")"
+SSH_KEYS_CSV="$(env_list_value BOOTBOX_SSH_KEY BOOTBOX_SSH_KEYS TANAAB_SSH_KEY TANAAB_SSH_KEYS)"
 
 # collect them all togethers with fallback if still empty
 if [[ -z "${BREWFILES_CSV}" ]] && [[ -f "./Brewfile" ]]; then
   BREWFILES_CSV="./Brewfile"
 fi
-
-BREWFILES_CSV_DISPLAY="${BREWFILES_CSV:-none}"
-DOTPKGS_CSV_DISPLAY="${DOTPKGS_CSV:-none}"
-SSH_KEYS_CSV_DISPLAY="${SSH_KEYS_CSV:-none}"
 
 trim_whitespace() {
   local value="$1"
@@ -298,30 +328,66 @@ for arg in "$@"; do
 done
 
 usage() {
+  local brewfiles_display
+  local debug_display="off"
+  local dotpkgs_display
+  local force_display="off"
+  local no_sudo_display="off"
+  local quiet_display="off"
+  local ssh_keys_display
+
+  brewfiles_display="$(array_join "," BREWFILES)"
+  brewfiles_display="${brewfiles_display:-none}"
+  dotpkgs_display="$(array_join "," DOTPKGS)"
+  dotpkgs_display="${dotpkgs_display:-none}"
+  ssh_keys_display="$(array_join "," SSH_KEYS)"
+  ssh_keys_display="${ssh_keys_display:-none}"
+
+  if value_enabled "${DEBUG:-}"; then
+    debug_display="on"
+  fi
+
+  if value_enabled "${FORCE:-}"; then
+    force_display="on"
+  fi
+
+  if value_enabled "${QUIET:-}"; then
+    quiet_display="on"
+  fi
+
+  if value_enabled "${NO_SUDO:-}"; then
+    no_sudo_display="on"
+  fi
+
   cat <<EOS
-Usage: ${tty_dim}[NONINTERACTIVE=1] [CI=1]${tty_reset} ${tty_bold}${SCRIPT_NAME}${tty_reset} ${tty_dim}[options]${tty_reset}
+Usage: ${tty_dim}[NONINTERACTIVE=1] [CI=1] [BOOTBOX_*...]${tty_reset} ${tty_bold}${SCRIPT_NAME}${tty_reset} ${tty_dim}[options]${tty_reset}
 
 ${tty_tp}Options:${tty_reset}
-  --brewfile       installs brewfiles from local paths or URLs ${tty_dim}[default: ${BREWFILES_CSV_DISPLAY}]${tty_reset}
-  --dotpkg         stows dot packages into target ${tty_dim}[default: ${DOTPKGS_CSV_DISPLAY}]${tty_reset}
-  --ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] ${tty_dim}[default: ${SSH_KEYS_CSV_DISPLAY}]${tty_reset}
+  --brewfile       installs brewfiles from local paths or URLs ${tty_dim}[default: ${brewfiles_display}]${tty_reset}
+  --dotpkg         stows dot packages into target ${tty_dim}[default: ${dotpkgs_display}]${tty_reset}
+  --ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] ${tty_dim}[default: ${ssh_keys_display}]${tty_reset}
   --op-token       auths with 1password service account token ${tty_dim}[default: $(op_token_for_display)]${tty_reset}
   --target         installs dotpkgs and identities relative to here ${tty_dim}[default: ${TARGET}]${tty_reset}
   --version        shows version of this script
-  --debug          shows debug messages
+  --debug          shows debug messages ${tty_dim}[default: ${debug_display}]${tty_reset}
+  --quiet          suppresses bootbox status output ${tty_dim}[default: ${quiet_display}]${tty_reset}
+  --no-sudo        disables sudo checks, prompts, and elevation ${tty_dim}[default: ${no_sudo_display}]${tty_reset}
+  --force          forces supported overwrite operations ${tty_dim}[default: ${force_display}]${tty_reset}
   -h, --help       displays this help message
   -y, --yes        runs with all defaults and no prompts, sets NONINTERACTIVE=1
 
 ${tty_tp}Environment Variables:${tty_reset}
-  TANAAB_BREWFILE  comma-separated list of brewfile paths or URLs to install
-  TANAAB_DOTPKG    comma-separated list of stow package paths to install
-  TANAAB_SSH_KEY   comma-separated list of 1password ssh keys as vault/item[:filename]
-  TANAAB_OP_TOKEN  1password service account token; falls back to OP_SERVICE_ACCOUNT_TOKEN
-  TANAAB_TARGET    target directory for dotpkgs and identities
-  TANAAB_FORCE     set to a truthy value to force supported operations
-  TANAAB_DEBUG     set to a truthy value to show debug messages
-  NONINTERACTIVE   installs without prompting for user input
-  CI               installs in CI mode (e.g. does not prompt for user input)
+  BOOTBOX_BREWFILE same as --brewfile
+  BOOTBOX_DOTPKG   same as --dotpkg
+  BOOTBOX_SSH_KEY  same as --ssh-key
+  BOOTBOX_OP_TOKEN same as --op-token; falls back to OP_SERVICE_ACCOUNT_TOKEN
+  BOOTBOX_TARGET   same as --target
+  BOOTBOX_FORCE    same as --force
+  BOOTBOX_QUIET    same as --quiet
+  BOOTBOX_NO_SUDO  same as --no-sudo
+  BOOTBOX_DEBUG    same as --debug
+  NONINTERACTIVE   same as --yes
+  CI               runs in CI mode and disables prompts
 EOS
   if [[ "${1:-0}" != "noexit" ]]; then
     exit "${1:-0}"
@@ -333,9 +399,33 @@ show_version() {
   exit 0
 }
 
+abort_option_usage() {
+  usage "noexit"
+  abort "$1"
+}
+
+require_next_option_value() {
+  local option="$1"
+  local argc="$2"
+
+  if [[ "${argc}" -lt 2 ]]; then
+    abort_option_usage "option ${tty_bold}${option}${tty_reset} requires a value."
+  fi
+}
+
+require_inline_option_value() {
+  local option="$1"
+  local value="$2"
+
+  if [[ -z "${value}" ]]; then
+    abort_option_usage "option ${tty_bold}${option}${tty_reset} must not be empty."
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --brewfile)
+      require_next_option_value "--brewfile" "$#"
       append_array_value BREWFILES "$2"
       shift 2
       ;;
@@ -344,6 +434,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --brewfiles)
+      require_next_option_value "--brewfiles" "$#"
       append_csv_to_array BREWFILES "$2"
       shift 2
       ;;
@@ -352,6 +443,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --dotpkg)
+      require_next_option_value "--dotpkg" "$#"
       append_array_value DOTPKGS "$2"
       shift 2
       ;;
@@ -360,6 +452,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --dotpkgs)
+      require_next_option_value "--dotpkgs" "$#"
       append_csv_to_array DOTPKGS "$2"
       shift 2
       ;;
@@ -368,6 +461,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --ssh-key)
+      require_next_option_value "--ssh-key" "$#"
       append_array_value SSH_KEYS "$2"
       shift 2
       ;;
@@ -376,6 +470,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --ssh-keys)
+      require_next_option_value "--ssh-keys" "$#"
       append_csv_to_array SSH_KEYS "$2"
       shift 2
       ;;
@@ -384,6 +479,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --op-token)
+      require_next_option_value "--op-token" "$#"
       OP_TOKEN="$2"
       shift 2
       ;;
@@ -396,6 +492,14 @@ while [[ $# -gt 0 ]]; do
       DEBUG=1
       shift
       ;;
+    --quiet)
+      QUIET=1
+      shift
+      ;;
+    --no-sudo)
+      NO_SUDO=1
+      shift
+      ;;
     --force)
       FORCE=1
       shift
@@ -406,10 +510,13 @@ while [[ $# -gt 0 ]]; do
       ;;
 
     --target)
+      require_next_option_value "--target" "$#"
+      require_inline_option_value "--target" "$2"
       TARGET="$2"
       shift 2
       ;;
     --target=*)
+      require_inline_option_value "--target" "${1#*=}"
       TARGET="${1#*=}"
       shift
       ;;
@@ -426,7 +533,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       usage "noexit"
-      abort "${tty_red}Unrecognized option${tty_reset} ${tty_bold}$1${tty_reset}! See available options in usage above."
+      abort "unrecognized option ${tty_bold}$1${tty_reset}; see usage above."
       ;;
   esac
 done
@@ -709,7 +816,7 @@ default_homebrew_prefix() {
 }
 
 # core packages that should be present regardless of any user-provided Brewfile
-declare -a TANAAB_CORE_BREW_PACKAGES=(
+declare -a BOOTBOX_CORE_BREW_PACKAGES=(
   "formula|git|git"
   "cask|1password-cli@beta|op"
   "formula|curl|curl"
@@ -719,17 +826,17 @@ declare -a TANAAB_CORE_BREW_PACKAGES=(
 )
 
 # GET THE LTF right away once we know we are not exiting through usage/version.
-TANAAB_TMPFILE="$(mktemp -t tanaab.XXXXXX)"
+BOOTBOX_TMPFILE="$(mktemp -t bootbox.XXXXXX)"
 
 # derive the rest of the runtime defaults after argument parsing
 detect_arch
 detect_os
 
-ARCH="${TANAAB_ARCH:-"$DETECTED_ARCH"}"
-OS="${TANAAB_OS:-"$DETECTED_OS"}"
+ARCH="$(env_value BOOTBOX_ARCH TANAAB_ARCH "$DETECTED_ARCH")"
+OS="$(env_value BOOTBOX_OS TANAAB_OS "$DETECTED_OS")"
 HOMEBREW_PREFIX="${HOMEBREW_PREFIX:-"$(default_homebrew_prefix "$ARCH")"}"
 HOMEBREW_INSTALLER_URL="https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
-TANAAB_TMPDIR=$(get_abs_dir "$TANAAB_TMPFILE")
+BOOTBOX_TMPDIR=$(get_abs_dir "$BOOTBOX_TMPFILE")
 
 # USER isn't always set so provide a fall back for the installer and subprocesses.
 if [[ -z "${USER-}" ]]; then
@@ -739,13 +846,13 @@ fi
 
 # redefine this one
 abort() {
-  printf "${tty_red}ERROR${tty_reset}: %s\n" "$(chomp "$1")" >&2
+  printf "${tty_red}error${tty_reset}: %s\n" "$(chomp "$1")" >&2
   exit 1
 }
 
 abort_multi() {
   while read -r line; do
-    printf "${tty_red}ERROR${tty_reset}: %s\n" "$(chomp "$line")" >&2
+    printf "${tty_red}error${tty_reset}: %s\n" "$(chomp "$line")" >&2
   done <<< "$@"
   exit 1
 }
@@ -754,23 +861,24 @@ chomp() {
   printf "%s" "${1/"$'\n'"/}"
 }
 
-value_enabled() {
-  case "${1:-}" in
-    '' | 0 | false | FALSE | False | no | NO | No | off | OFF | Off)
-      return 1
-      ;;
-    *)
-      return 0
-      ;;
-  esac
-}
-
 debug_enabled() {
   value_enabled "${DEBUG:-}"
 }
 
 force_enabled() {
   value_enabled "${FORCE:-}"
+}
+
+quiet_enabled() {
+  value_enabled "${QUIET:-}"
+}
+
+no_sudo_enabled() {
+  value_enabled "${NO_SUDO:-}"
+}
+
+sudo_enabled() {
+  ! no_sudo_enabled
 }
 
 check_core_mode() {
@@ -798,6 +906,10 @@ debug_multi() {
 }
 
 log() {
+  if quiet_enabled; then
+    return 0
+  fi
+
   printf "%s\n" "$(shell_join "$@")"
 }
 
@@ -812,7 +924,7 @@ shell_join() {
 }
 
 warn() {
-  printf "${tty_yellow}warning${tty_reset}: %s\n" "$(chomp "$@")" >&2
+  printf "${tty_yellow}warn${tty_reset}: %s\n" "$(chomp "$@")" >&2
 }
 
 # shellcheck disable=SC2329
@@ -840,8 +952,8 @@ debug raw HOMEBREW_PREFIX="$HOMEBREW_PREFIX"
 debug raw TARGET="$TARGET"
 debug raw OS="$OS"
 debug raw USER="$USER"
-debug raw TMPFILE="$TANAAB_TMPFILE"
-debug raw TMPDIR="$TANAAB_TMPDIR"
+debug raw TMPFILE="$BOOTBOX_TMPFILE"
+debug raw TMPDIR="$BOOTBOX_TMPDIR"
 
 #######################################################################  tool-verification
 
@@ -982,6 +1094,11 @@ have_sudo_access() {
   local GROUPS_CMD
   local -a SUDO=("/usr/bin/sudo")
 
+  if no_sudo_enabled; then
+    HAVE_SUDO_ACCESS="1"
+    return 1
+  fi
+
   GROUPS_CMD="$(which groups)"
 
   if [[ ! -x "/usr/bin/sudo" ]]; then
@@ -1061,7 +1178,7 @@ plan_homebrew() {
 }
 
 install_homebrew() {
-  local installer="${TANAAB_TMPDIR}/homebrew-install.sh"
+  local installer="${BOOTBOX_TMPDIR}/homebrew-install.sh"
 
   log "${tty_tp}installing${tty_reset} ${tty_ts}homebrew${tty_reset} ${tty_dim}because it is not installed${tty_reset}"
   execute "${CURL}" \
@@ -1100,7 +1217,7 @@ plan_core_homebrew_packages() {
   CORE_BREW_CASK_DISPLAY_TO_INSTALL=()
   CORE_BREW_DISPLAY_TO_INSTALL=()
 
-  for entry in "${TANAAB_CORE_BREW_PACKAGES[@]}"; do
+  for entry in "${BOOTBOX_CORE_BREW_PACKAGES[@]}"; do
     IFS='|' read -r type package display <<< "${entry}"
 
     if [[ "${BREW_NEEDS_INSTALL:-0}" == "1" ]]; then
@@ -1155,7 +1272,7 @@ fetch_brewfile_url() {
   local url="$1"
   local destination
 
-  destination="$(mktemp "${TANAAB_TMPDIR}/brewfile-url.XXXXXX")"
+  destination="$(mktemp "${BOOTBOX_TMPDIR}/brewfile-url.XXXXXX")"
   debug "fetching brewfile ${url} to ${destination}"
 
   if ! "${CURL}" \
@@ -1207,7 +1324,7 @@ prepare_effective_brewfile() {
     return 0
   fi
 
-  effective_brewfile="$(mktemp "${TANAAB_TMPDIR}/brewfile-effective.XXXXXX")"
+  effective_brewfile="$(mktemp "${BOOTBOX_TMPDIR}/brewfile-effective.XXXXXX")"
   : > "${effective_brewfile}"
 
   for source_brewfile in "${RESOLVED_BREWFILES[@]}"; do
@@ -1379,7 +1496,7 @@ plan_ssh_keys() {
   if [[ -z "${OP_TOKEN:-}" ]]; then
     abort_multi "$(cat <<EOABORT
 ssh key installation requires a 1password service account token.
-set TANAAB_OP_TOKEN or OP_SERVICE_ACCOUNT_TOKEN, or pass --op-token.
+set BOOTBOX_OP_TOKEN or OP_SERVICE_ACCOUNT_TOKEN, or pass --op-token.
 EOABORT
 )"
   fi
@@ -1466,7 +1583,7 @@ EOABORT
       log "${tty_tp}installing${tty_reset} ssh key ${tty_ts}${filename}${tty_reset} ${tty_dim}into${tty_reset} ${tty_ts}${ssh_dir}${tty_reset}"
     fi
 
-    key_tmpfile="$(mktemp "${TANAAB_TMPDIR}/ssh-key.XXXXXX")"
+    key_tmpfile="$(mktemp "${BOOTBOX_TMPDIR}/ssh-key.XXXXXX")"
     op_read_ssh_key_to_file "${ssh_key}" "${key_tmpfile}"
     auto_mv "${key_tmpfile}" "${destination_path}"
     auto_chmod 600 "${destination_path}"
@@ -1829,7 +1946,7 @@ debug "using the cURL at ${CURL}"
 ####################################################################### version validation
 
 needs_sudo() {
-  if [[ ! -w "$HOMEBREW_PERM_DIR" ]] || [[ ! -w "$PERM_DIR" ]] || [[ ! -w "$TANAAB_TMPDIR" ]]; then
+  if [[ ! -w "$HOMEBREW_PERM_DIR" ]] || [[ ! -w "$PERM_DIR" ]] || [[ ! -w "$BOOTBOX_TMPDIR" ]]; then
     return 0;
   else
     return 1;
@@ -1841,14 +1958,14 @@ needs_sudo() {
 # abort if run as root
 # @NOTE: this might change in the future but right now we do not understand all the complexities around this
 if [[ "${EUID:-${UID}}" == "0" ]]; then
-  abort "Cannot run this script as root"
+  abort "cannot run this script as root."
 fi
 
 # abort if unsupported os
 if [[ "${OS}" != "macos" ]]; then
   abort_multi "$(cat <<EOABORT
-This script is only for ${tty_green}macOS${tty_reset}. ${tty_red}${OS}${tty_reset} is not supported!
-Check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
+this script only supports ${tty_ts}macOS${tty_reset}; ${tty_red}${OS}${tty_reset} is not supported.
+check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
 fi
@@ -1856,8 +1973,8 @@ fi
 # abort if unsupported arch
 if [[ "${ARCH}" != "x64" ]] && [[ "${ARCH}" != "arm64" ]]; then
   abort_multi "$(cat <<EOABORT
-This script currently only supports ${tty_green}x64${tty_reset} and ${tty_green}arm64${tty_reset} systems.
-Check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
+this script currently only supports ${tty_ts}x64${tty_reset} and ${tty_ts}arm64${tty_reset} systems.
+check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
 fi
@@ -1867,8 +1984,8 @@ if [[ "${OS}" == "macos" ]]; then
   macos_version="$(major_minor "$(/usr/bin/sw_vers -productVersion)")"
   if ! version_compare "${macos_version}" "${MACOS_OLDEST_SUPPORTED}"; then
     abort_multi "$(cat <<EOABORT
-Your macOS version ${tty_red}${macos_version}${tty_reset} is ${tty_bold}too old${tty_reset}! Min required version is ${tty_green}${MACOS_OLDEST_SUPPORTED}${tty_reset}
-Check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
+your macOS version ${tty_red}${macos_version}${tty_reset} is ${tty_bold}too old${tty_reset}; minimum supported version is ${tty_ts}${MACOS_OLDEST_SUPPORTED}${tty_reset}.
+check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
   fi
@@ -1888,11 +2005,29 @@ refresh_permission_dirs
 
 # @NOTE: in order to do what we want here does the user actually need to be a sudoer?
 
+if no_sudo_enabled && [[ "${BREW_NEEDS_INSTALL:-0}" == "1" ]]; then
+  abort_multi "$(cat <<EOABORT
+Homebrew is missing and bootbox is running with ${tty_bold}--no-sudo${tty_reset}.
+install Homebrew from a privileged machine-prep layer first, then rerun bootbox without requiring sudo.
+for more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
+EOABORT
+)"
+fi
+
+if needs_sudo && no_sudo_enabled; then
+  abort_multi "$(cat <<EOABORT
+bootbox is running with ${tty_bold}--no-sudo${tty_reset}, but ${tty_bold}${USER}${tty_reset} cannot write to ${tty_red}${TARGET}${tty_reset} or the expected Homebrew location ${tty_red}${HOMEBREW_PREFIX}${tty_reset}.
+prepare writable Homebrew and target paths in the wrapper or machine-prep layer, or use --target to install into a directory ${tty_bold}${USER}${tty_reset} can write to.
+for more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
+EOABORT
+)"
+fi
+
 if needs_sudo && ! have_sudo_access; then
   abort_multi "$(cat <<EOABORT
-${tty_bold}${USER}${tty_reset} cannot write to ${tty_red}${TARGET}${tty_reset} or the expected Homebrew location ${tty_red}${HOMEBREW_PREFIX}${tty_reset} and is not a ${tty_bold}sudo${tty_reset} user!
-Rerun setup with a sudoer or use --target to install into a directory ${tty_bold}${USER}${tty_reset} can write to.
-For more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
+${tty_bold}${USER}${tty_reset} cannot write to ${tty_red}${TARGET}${tty_reset} or the expected Homebrew location ${tty_red}${HOMEBREW_PREFIX}${tty_reset} and is not a ${tty_bold}sudo${tty_reset} user.
+rerun setup with a sudoer or use --target to install into a directory ${tty_bold}${USER}${tty_reset} can write to.
+for more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
 fi
@@ -1905,18 +2040,18 @@ fi
 # shellcheck disable=SC2016
 if [[ -z "${NONINTERACTIVE-}" ]]; then
   if [[ -n "${CI-}" ]]; then
-    warn 'Running in non-interactive mode because `$CI` is set.'
+    warn 'running in non-interactive mode because `$CI` is set.'
     NONINTERACTIVE=1
   elif [[ ! -t 0 ]]; then
     if [[ -z "${INTERACTIVE-}" ]];  then
-      warn 'Running in non-interactive mode because `stdin` is not a TTY.'
+      warn 'running in non-interactive mode because `stdin` is not a TTY.'
       NONINTERACTIVE=1
     else
-      warn 'Running in interactive mode despite `stdin` not being a TTY because `$INTERACTIVE` is set.'
+      warn 'running in interactive mode despite `stdin` not being a TTY because `$INTERACTIVE` is set.'
     fi
   fi
 else
-  log "${tty_tp}running${tty_reset} in ${tty_yellow}non-interactive mode${tty_reset} ${tty_dim}because \$NONINTERACTIVE is set${tty_reset}"
+  log "${tty_tp}running${tty_reset} in ${tty_ts}non-interactive mode${tty_reset} ${tty_dim}because \$NONINTERACTIVE is set${tty_reset}"
 fi
 
 ####################################################################### script
@@ -1932,13 +2067,13 @@ getc() {
 execute() {
   debug "${tty_tp}running${tty_reset}" "$@"
   if ! "$@"; then
-    abort "$(printf "Failed during: %s" "$(shell_join "$@")")"
+    abort "$(printf "failed during: %s" "$(shell_join "$@")")"
   fi
 }
 
 execute_sudo() {
   local -a args=("$@")
-  if [[ "${EUID:-${UID}}" != "0" ]] && have_sudo_access; then
+  if sudo_enabled && [[ "${EUID:-${UID}}" != "0" ]] && have_sudo_access; then
     if [[ -n "${SUDO_ASKPASS-}" ]]; then
       args=("-A" "${args[@]}")
     fi
@@ -1969,7 +2104,7 @@ auto_mkdirp() {
   local perm_dir
   perm_dir="$(find_first_existing_parent "$dir")"
 
-  if have_sudo_access && [[ ! -w "$perm_dir" ]]; then
+  if sudo_enabled && have_sudo_access && [[ ! -w "$perm_dir" ]]; then
     execute_sudo mkdir -p "$dir"
   else
     execute mkdir -p "$dir"
@@ -1985,7 +2120,7 @@ auto_mv() {
   perm_source="$(find_first_existing_parent "$source")"
   perm_dest="$(find_first_existing_parent "$dest")"
 
-  if have_sudo_access && [[ ! -w "$perm_source" ||  ! -w "$perm_dest" ]]; then
+  if sudo_enabled && have_sudo_access && [[ ! -w "$perm_source" ||  ! -w "$perm_dest" ]]; then
     execute_sudo mv -f "$source" "$dest"
   else
     execute mv -f "$source" "$dest"
@@ -1999,7 +2134,7 @@ auto_cp_follow() {
   local perm_dest
   perm_dest="$(find_first_existing_parent "$dest")"
 
-  if have_sudo_access && [[ ! -w "$perm_dest" ]]; then
+  if sudo_enabled && have_sudo_access && [[ ! -w "$perm_dest" ]]; then
     execute_sudo cp -RL "$source" "$dest"
   else
     execute cp -RL "$source" "$dest"
@@ -2012,7 +2147,7 @@ auto_rm() {
   local perm_dir
   perm_dir="$(find_first_existing_parent "$path")"
 
-  if have_sudo_access && [[ ! -w "$perm_dir" ]]; then
+  if sudo_enabled && have_sudo_access && [[ ! -w "$perm_dir" ]]; then
     execute_sudo rm -f "$path"
   else
     execute rm -f "$path"
@@ -2026,7 +2161,7 @@ auto_chmod() {
   local perm_dir
   perm_dir="$(find_first_existing_parent "$path")"
 
-  if have_sudo_access && [[ ! -w "$perm_dir" ]]; then
+  if sudo_enabled && have_sudo_access && [[ ! -w "$perm_dir" ]]; then
     execute_sudo chmod "${mode}" "$path"
   else
     execute chmod "${mode}" "$path"
@@ -2034,7 +2169,7 @@ auto_chmod() {
 }
 
 # Invalidate sudo timestamp before exiting (if it wasn't active before).
-if [[ -x /usr/bin/sudo ]] && ! /usr/bin/sudo -n -v 2>/dev/null; then
+if sudo_enabled && [[ -x /usr/bin/sudo ]] && ! /usr/bin/sudo -n -v 2>/dev/null; then
   trap '/usr/bin/sudo -k' EXIT
 fi
 
@@ -2049,7 +2184,7 @@ if [[ -z "${NONINTERACTIVE-}" ]] && have_planned_actions; then
 fi
 
 # flag for password here if needed
-if needs_sudo; then
+if sudo_enabled && needs_sudo; then
   log "please enter ${tty_bold}sudo${tty_reset} password:"
   execute_sudo true
 fi

@@ -10,7 +10,7 @@ key twice: once with the default filename and once with a filename override.
 rm -rf .tmp && mkdir -p .tmp/home
 
 # should have the 1password test token available
-test -n "$TANAAB_OP_TESTVAULT"
+test -n "$BOOTBOX_OP_TESTVAULT"
 
 # should install the requested ssh keys from 1password
 CI=1 NONINTERACTIVE=1 \
@@ -18,7 +18,7 @@ bootbox \
   --target "$(pwd)/.tmp/home" \
   --ssh-key "omfsw2uztmi2xqpid5g3kiv6ba/id_test" \
   --ssh-key "omfsw2uztmi2xqpid5g3kiv6ba/id_test:id_test_bootbox" \
-  --op-token "$TANAAB_OP_TESTVAULT" \
+  --op-token "$BOOTBOX_OP_TESTVAULT" \
   > .tmp/setup.log 2>&1
 ```
 

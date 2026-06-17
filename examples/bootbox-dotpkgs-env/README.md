@@ -1,6 +1,6 @@
 # Bootbox Dotpkgs Env Example
 
-This example uses the `TANAAB_DOTPKG` and `TANAAB_TARGET` environment variables to stow multiple
+This example uses the `BOOTBOX_DOTPKG` and `BOOTBOX_TARGET` environment variables to stow multiple
 dot packages into an example-local target directory.
 
 ## Setup
@@ -11,8 +11,8 @@ rm -rf .tmp && mkdir -p .tmp/home
 
 # should stow the requested dotpkgs from environment variables
 CI=1 NONINTERACTIVE=1 \
-TANAAB_DOTPKG="dotpkgs/git,dotpkgs/vim" \
-TANAAB_TARGET="$(pwd)/.tmp/home" \
+BOOTBOX_DOTPKG="dotpkgs/git,dotpkgs/vim" \
+BOOTBOX_TARGET="$(pwd)/.tmp/home" \
 bootbox > .tmp/setup.log 2>&1
 ```
 

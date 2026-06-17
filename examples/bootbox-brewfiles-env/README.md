@@ -1,6 +1,6 @@
 # Bootbox Brewfiles Env Example
 
-This example uses `TANAAB_BREWFILE` and `TANAAB_DEBUG` to exercise multi-source Brewfile handling
+This example uses `BOOTBOX_BREWFILE` and `BOOTBOX_DEBUG` to exercise multi-source Brewfile handling
 with a local Brewfile and a `file://` Brewfile URL, then verifies the requested formulas are
 available afterwards.
 
@@ -13,9 +13,9 @@ rm -rf .tmp && mkdir -p .tmp/home
 # should run bootbox with local and file-url brewfiles from environment variables
 url_brewfile="file://$(pwd)/Brewfile.url" && \
 CI=1 NONINTERACTIVE=1 \
-TANAAB_BREWFILE="Brewfile.base,$url_brewfile" \
-TANAAB_DEBUG=1 \
-TANAAB_TARGET="$(pwd)/.tmp/home" \
+BOOTBOX_BREWFILE="Brewfile.base,$url_brewfile" \
+BOOTBOX_DEBUG=1 \
+BOOTBOX_TARGET="$(pwd)/.tmp/home" \
 bootbox > .tmp/setup.log 2>&1
 ```
 

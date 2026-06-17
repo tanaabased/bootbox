@@ -22,9 +22,10 @@ jobs:
           - bootbox-brewfiles-flags
           - bootbox-brewfiles-env
           - bootbox-ssh-keys-flags
+          - bootbox-legacy-env-compat
     env:
       HOMEBREW_NO_AUTO_UPDATE: '1'
-      TANAAB_OP_TESTVAULT: ${{ secrets.TANAAB_OP_TESTVAULT }}
+      BOOTBOX_OP_TESTVAULT: ${{ secrets.TANAAB_OP_TESTVAULT }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -51,5 +52,6 @@ jobs:
       - name: Run Leia-backed example
         shell: bash
         run: |
+          brew update
           mkdir -p examples/.tmp
           TMPDIR="$PWD/examples/.tmp" ./node_modules/.bin/leia "examples/${{ matrix.example }}/README.md" -c "Destroy tests" --stdin
