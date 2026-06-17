@@ -141,6 +141,7 @@ value_enabled() {
 # see https://github.blog/changelog/2022-05-24-github-actions-re-run-jobs-with-debug-logging/
 DEBUG="${TANAAB_DEBUG:-${DEBUG:-${RUNNER_DEBUG:-}}}"
 FORCE="${TANAAB_FORCE:-}"
+QUIET="${TANAAB_QUIET:-}"
 CHECK_CORE=""
 TARGET="${TANAAB_TARGET:-$HOME}"
 BREWFILES_CSV="${TANAAB_BREWFILE:-}"
@@ -309,6 +310,7 @@ usage() {
   local debug_display="off"
   local dotpkgs_display
   local force_display="off"
+  local quiet_display="off"
   local ssh_keys_display
 
   brewfiles_display="$(array_join "," BREWFILES)"
@@ -326,6 +328,10 @@ usage() {
     force_display="on"
   fi
 
+  if value_enabled "${QUIET:-}"; then
+    quiet_display="on"
+  fi
+
   cat <<EOS
 Usage: ${tty_dim}[NONINTERACTIVE=1] [CI=1] [TANAAB_*...]${tty_reset} ${tty_bold}${SCRIPT_NAME}${tty_reset} ${tty_dim}[options]${tty_reset}
 
@@ -337,6 +343,7 @@ ${tty_tp}Options:${tty_reset}
   --target         installs dotpkgs and identities relative to here ${tty_dim}[default: ${TARGET}]${tty_reset}
   --version        shows version of this script
   --debug          shows debug messages ${tty_dim}[default: ${debug_display}]${tty_reset}
+  --quiet          suppresses bootbox status output ${tty_dim}[default: ${quiet_display}]${tty_reset}
   --force          forces supported overwrite operations ${tty_dim}[default: ${force_display}]${tty_reset}
   -h, --help       displays this help message
   -y, --yes        runs with all defaults and no prompts, sets NONINTERACTIVE=1
@@ -348,6 +355,7 @@ ${tty_tp}Environment Variables:${tty_reset}
   TANAAB_OP_TOKEN  same as --op-token; falls back to OP_SERVICE_ACCOUNT_TOKEN
   TANAAB_TARGET    same as --target
   TANAAB_FORCE     same as --force
+  TANAAB_QUIET     same as --quiet
   TANAAB_DEBUG     same as --debug
   NONINTERACTIVE   same as --yes
   CI               runs in CI mode and disables prompts
@@ -453,6 +461,10 @@ while [[ $# -gt 0 ]]; do
 
     --debug)
       DEBUG=1
+      shift
+      ;;
+    --quiet)
+      QUIET=1
       shift
       ;;
     --force)
@@ -824,6 +836,10 @@ force_enabled() {
   value_enabled "${FORCE:-}"
 }
 
+quiet_enabled() {
+  value_enabled "${QUIET:-}"
+}
+
 check_core_mode() {
   [[ "${CHECK_CORE:-0}" == "1" ]]
 }
@@ -849,6 +865,10 @@ debug_multi() {
 }
 
 log() {
+  if quiet_enabled; then
+    return 0
+  fi
+
   printf "%s\n" "$(shell_join "$@")"
 }
 

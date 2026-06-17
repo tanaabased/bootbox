@@ -32,6 +32,7 @@ bootbox --help | grep -F -- '--op-token'
 bootbox --help | grep -F -- '--target'
 bootbox --help | grep -F -- '--version'
 bootbox --help | grep -F -- '--debug'
+bootbox --help | grep -F -- '--quiet'
 bootbox --help | grep -F -- '--force'
 bootbox --help | grep -F -- '--yes'
 
@@ -42,6 +43,7 @@ bootbox --help | grep -F 'TANAAB_SSH_KEY   same as --ssh-key'
 bootbox --help | grep -F 'TANAAB_OP_TOKEN  same as --op-token; falls back to OP_SERVICE_ACCOUNT_TOKEN'
 bootbox --help | grep -F 'TANAAB_TARGET    same as --target'
 bootbox --help | grep -F 'TANAAB_FORCE     same as --force'
+bootbox --help | grep -F 'TANAAB_QUIET     same as --quiet'
 bootbox --help | grep -F 'TANAAB_DEBUG     same as --debug'
 bootbox --help | grep -F 'NONINTERACTIVE   same as --yes'
 bootbox --help | grep -F 'CI               runs in CI mode and disables prompts'
@@ -63,6 +65,11 @@ test ! -s .tmp/check-core.log
 bootbox --debug --check-core > .tmp/check-core-debug.log 2>&1 || test "$?" -eq 1
 grep -F 'running hidden --check-core mode' .tmp/check-core-debug.log
 
+# should keep debug logging on stderr when quiet mode is enabled
+bootbox --quiet --debug --check-core > .tmp/check-core-quiet.stdout 2> .tmp/check-core-quiet.stderr || test "$?" -eq 1
+test ! -s .tmp/check-core-quiet.stdout
+grep -F 'running hidden --check-core mode' .tmp/check-core-quiet.stderr
+
 # should mask token defaults in help
 TANAAB_OP_TOKEN='secret-example-value' bootbox --help | grep -F 'secr...alue'
 if TANAAB_OP_TOKEN='secret-example-value' bootbox --help | grep -F 'secret-example-value'; then exit 1; fi
@@ -70,9 +77,12 @@ if TANAAB_OP_TOKEN='secret-example-value' bootbox --help | grep -F 'secret-examp
 # should allow an inline empty op token to mean no token
 TANAAB_OP_TOKEN='secret-example-value' bootbox --op-token= --help | grep -F -- '--op-token       auths with 1password service account token [default: none]'
 
-# should show debug and force defaults
+# should show debug, quiet, and force defaults
 bootbox --help | grep -F -- '--debug          shows debug messages [default: off]'
 bootbox --debug --help | grep -F -- '--debug          shows debug messages [default: on]'
+bootbox --help | grep -F -- '--quiet          suppresses bootbox status output [default: off]'
+bootbox --quiet --help | grep -F -- '--quiet          suppresses bootbox status output [default: on]'
+TANAAB_QUIET=1 bootbox --help | grep -F -- '--quiet          suppresses bootbox status output [default: on]'
 bootbox --help | grep -F -- '--force          forces supported overwrite operations [default: off]'
 bootbox --force --help | grep -F -- '--force          forces supported overwrite operations [default: on]'
 

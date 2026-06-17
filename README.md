@@ -60,6 +60,7 @@ Bootbox keeps its configuration surface intentionally small.
 - `TANAAB_OP_TOKEN`: 1Password service account token
 - `TANAAB_TARGET`: install target directory
 - `TANAAB_FORCE`: enables supported overwrite behavior
+- `TANAAB_QUIET`: suppresses Bootbox status output for wrapper callers
 - `TANAAB_DEBUG`: enables debug logging
 - `NONINTERACTIVE` and `CI`: disable prompts for automated runs
 
