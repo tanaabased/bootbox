@@ -51,5 +51,6 @@ jobs:
       - name: Run Leia-backed example
         shell: bash
         run: |
+          brew update
           mkdir -p examples/.tmp
           TMPDIR="$PWD/examples/.tmp" ./node_modules/.bin/leia "examples/${{ matrix.example }}/README.md" -c "Destroy tests" --stdin

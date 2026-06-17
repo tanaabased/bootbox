@@ -29,7 +29,7 @@ MACOS_OLDEST_SUPPORTED="26.0"
 REQUIRED_CURL_VERSION="7.41.0"
 
 abort() {
-  printf "%s\n" "$@" >&2
+  printf "error: %s\n" "$@" >&2
   exit 1
 }
 
@@ -37,12 +37,12 @@ abort() {
 # Single brackets are needed here for POSIX compatibility
 # shellcheck disable=SC2292
 if [ -z "${BASH_VERSION:-}" ]; then
-  abort "Bash is required to interpret this script."
+  abort "bash is required to interpret this script."
 fi
 
 # Check if script is run with force-interactive mode in CI
 if [[ -n "${CI-}" && -n "${INTERACTIVE-}" ]]; then
-  abort "Cannot run force-interactive mode in CI."
+  abort "cannot run force-interactive mode in CI."
 fi
 
 # Check if both `INTERACTIVE` and `NONINTERACTIVE` are set
@@ -54,7 +54,7 @@ fi
 
 # Check if script is run in POSIX mode
 if [[ -n "${POSIXLY_CORRECT+1}" ]]; then
-  abort 'Bash must not run in POSIX mode. Please unset POSIXLY_CORRECT and try again.'
+  abort 'bash must not run in POSIX mode. please unset POSIXLY_CORRECT and try again.'
 fi
 
 if [[ -t 1 ]]; then
@@ -80,7 +80,7 @@ tty_tp="$(tty_escape '38;2;0;200;138')"    # #00c88a
 tty_ts="$(tty_escape '38;2;219;39;119')"   # #db2777
 
 # Keep a single top-level assignment so release automation can stamp the entrypoint in place.
-SCRIPT_VERSION="${SCRIPT_VERSION:-$(git describe --tags --always --abbrev=1 2>/dev/null || printf '%s' '0.0.0')}"
+SCRIPT_VERSION="${SCRIPT_VERSION:-$(git describe --tags --always --abbrev=1 2>/dev/null || printf '%s' '0.0.0-unreleased')}"
 SCRIPT_NAME_SOURCE="${BASH_SOURCE[0]:-${0}}"
 SCRIPT_NAME="${SCRIPT_NAME_SOURCE##*/}"
 
@@ -124,6 +124,17 @@ op_token_for_display() {
   fi
 }
 
+value_enabled() {
+  case "${1:-}" in
+    '' | 0 | false | FALSE | False | no | NO | No | off | OFF | Off)
+      return 1
+      ;;
+    *)
+      return 0
+      ;;
+  esac
+}
+
 # Set cheap defaults needed by usage/arg parsing first so --help/--version stay fast.
 #
 # RUNNER_DEBUG is used here so we can get good debug output when toggled in GitHub Actions
@@ -156,10 +167,6 @@ fi
 if [[ -z "${BREWFILES_CSV}" ]] && [[ -f "./Brewfile" ]]; then
   BREWFILES_CSV="./Brewfile"
 fi
-
-BREWFILES_CSV_DISPLAY="${BREWFILES_CSV:-none}"
-DOTPKGS_CSV_DISPLAY="${DOTPKGS_CSV:-none}"
-SSH_KEYS_CSV_DISPLAY="${SSH_KEYS_CSV:-none}"
 
 trim_whitespace() {
   local value="$1"
@@ -298,30 +305,52 @@ for arg in "$@"; do
 done
 
 usage() {
+  local brewfiles_display
+  local debug_display="off"
+  local dotpkgs_display
+  local force_display="off"
+  local ssh_keys_display
+
+  brewfiles_display="$(array_join "," BREWFILES)"
+  brewfiles_display="${brewfiles_display:-none}"
+  dotpkgs_display="$(array_join "," DOTPKGS)"
+  dotpkgs_display="${dotpkgs_display:-none}"
+  ssh_keys_display="$(array_join "," SSH_KEYS)"
+  ssh_keys_display="${ssh_keys_display:-none}"
+
+  if value_enabled "${DEBUG:-}"; then
+    debug_display="on"
+  fi
+
+  if value_enabled "${FORCE:-}"; then
+    force_display="on"
+  fi
+
   cat <<EOS
-Usage: ${tty_dim}[NONINTERACTIVE=1] [CI=1]${tty_reset} ${tty_bold}${SCRIPT_NAME}${tty_reset} ${tty_dim}[options]${tty_reset}
+Usage: ${tty_dim}[NONINTERACTIVE=1] [CI=1] [TANAAB_*...]${tty_reset} ${tty_bold}${SCRIPT_NAME}${tty_reset} ${tty_dim}[options]${tty_reset}
 
 ${tty_tp}Options:${tty_reset}
-  --brewfile       installs brewfiles from local paths or URLs ${tty_dim}[default: ${BREWFILES_CSV_DISPLAY}]${tty_reset}
-  --dotpkg         stows dot packages into target ${tty_dim}[default: ${DOTPKGS_CSV_DISPLAY}]${tty_reset}
-  --ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] ${tty_dim}[default: ${SSH_KEYS_CSV_DISPLAY}]${tty_reset}
+  --brewfile       installs brewfiles from local paths or URLs ${tty_dim}[default: ${brewfiles_display}]${tty_reset}
+  --dotpkg         stows dot packages into target ${tty_dim}[default: ${dotpkgs_display}]${tty_reset}
+  --ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] ${tty_dim}[default: ${ssh_keys_display}]${tty_reset}
   --op-token       auths with 1password service account token ${tty_dim}[default: $(op_token_for_display)]${tty_reset}
   --target         installs dotpkgs and identities relative to here ${tty_dim}[default: ${TARGET}]${tty_reset}
   --version        shows version of this script
-  --debug          shows debug messages
+  --debug          shows debug messages ${tty_dim}[default: ${debug_display}]${tty_reset}
+  --force          forces supported overwrite operations ${tty_dim}[default: ${force_display}]${tty_reset}
   -h, --help       displays this help message
   -y, --yes        runs with all defaults and no prompts, sets NONINTERACTIVE=1
 
 ${tty_tp}Environment Variables:${tty_reset}
-  TANAAB_BREWFILE  comma-separated list of brewfile paths or URLs to install
-  TANAAB_DOTPKG    comma-separated list of stow package paths to install
-  TANAAB_SSH_KEY   comma-separated list of 1password ssh keys as vault/item[:filename]
-  TANAAB_OP_TOKEN  1password service account token; falls back to OP_SERVICE_ACCOUNT_TOKEN
-  TANAAB_TARGET    target directory for dotpkgs and identities
-  TANAAB_FORCE     set to a truthy value to force supported operations
-  TANAAB_DEBUG     set to a truthy value to show debug messages
-  NONINTERACTIVE   installs without prompting for user input
-  CI               installs in CI mode (e.g. does not prompt for user input)
+  TANAAB_BREWFILE  same as --brewfile
+  TANAAB_DOTPKG    same as --dotpkg
+  TANAAB_SSH_KEY   same as --ssh-key
+  TANAAB_OP_TOKEN  same as --op-token; falls back to OP_SERVICE_ACCOUNT_TOKEN
+  TANAAB_TARGET    same as --target
+  TANAAB_FORCE     same as --force
+  TANAAB_DEBUG     same as --debug
+  NONINTERACTIVE   same as --yes
+  CI               runs in CI mode and disables prompts
 EOS
   if [[ "${1:-0}" != "noexit" ]]; then
     exit "${1:-0}"
@@ -333,9 +362,33 @@ show_version() {
   exit 0
 }
 
+abort_option_usage() {
+  usage "noexit"
+  abort "$1"
+}
+
+require_next_option_value() {
+  local option="$1"
+  local argc="$2"
+
+  if [[ "${argc}" -lt 2 ]]; then
+    abort_option_usage "option ${tty_bold}${option}${tty_reset} requires a value."
+  fi
+}
+
+require_inline_option_value() {
+  local option="$1"
+  local value="$2"
+
+  if [[ -z "${value}" ]]; then
+    abort_option_usage "option ${tty_bold}${option}${tty_reset} must not be empty."
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --brewfile)
+      require_next_option_value "--brewfile" "$#"
       append_array_value BREWFILES "$2"
       shift 2
       ;;
@@ -344,6 +397,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --brewfiles)
+      require_next_option_value "--brewfiles" "$#"
       append_csv_to_array BREWFILES "$2"
       shift 2
       ;;
@@ -352,6 +406,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --dotpkg)
+      require_next_option_value "--dotpkg" "$#"
       append_array_value DOTPKGS "$2"
       shift 2
       ;;
@@ -360,6 +415,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --dotpkgs)
+      require_next_option_value "--dotpkgs" "$#"
       append_csv_to_array DOTPKGS "$2"
       shift 2
       ;;
@@ -368,6 +424,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --ssh-key)
+      require_next_option_value "--ssh-key" "$#"
       append_array_value SSH_KEYS "$2"
       shift 2
       ;;
@@ -376,6 +433,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --ssh-keys)
+      require_next_option_value "--ssh-keys" "$#"
       append_csv_to_array SSH_KEYS "$2"
       shift 2
       ;;
@@ -384,6 +442,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --op-token)
+      require_next_option_value "--op-token" "$#"
       OP_TOKEN="$2"
       shift 2
       ;;
@@ -406,10 +465,13 @@ while [[ $# -gt 0 ]]; do
       ;;
 
     --target)
+      require_next_option_value "--target" "$#"
+      require_inline_option_value "--target" "$2"
       TARGET="$2"
       shift 2
       ;;
     --target=*)
+      require_inline_option_value "--target" "${1#*=}"
       TARGET="${1#*=}"
       shift
       ;;
@@ -426,7 +488,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     *)
       usage "noexit"
-      abort "${tty_red}Unrecognized option${tty_reset} ${tty_bold}$1${tty_reset}! See available options in usage above."
+      abort "unrecognized option ${tty_bold}$1${tty_reset}; see usage above."
       ;;
   esac
 done
@@ -739,30 +801,19 @@ fi
 
 # redefine this one
 abort() {
-  printf "${tty_red}ERROR${tty_reset}: %s\n" "$(chomp "$1")" >&2
+  printf "${tty_red}error${tty_reset}: %s\n" "$(chomp "$1")" >&2
   exit 1
 }
 
 abort_multi() {
   while read -r line; do
-    printf "${tty_red}ERROR${tty_reset}: %s\n" "$(chomp "$line")" >&2
+    printf "${tty_red}error${tty_reset}: %s\n" "$(chomp "$line")" >&2
   done <<< "$@"
   exit 1
 }
 
 chomp() {
   printf "%s" "${1/"$'\n'"/}"
-}
-
-value_enabled() {
-  case "${1:-}" in
-    '' | 0 | false | FALSE | False | no | NO | No | off | OFF | Off)
-      return 1
-      ;;
-    *)
-      return 0
-      ;;
-  esac
 }
 
 debug_enabled() {
@@ -812,7 +863,7 @@ shell_join() {
 }
 
 warn() {
-  printf "${tty_yellow}warning${tty_reset}: %s\n" "$(chomp "$@")" >&2
+  printf "${tty_yellow}warn${tty_reset}: %s\n" "$(chomp "$@")" >&2
 }
 
 # shellcheck disable=SC2329
@@ -1841,14 +1892,14 @@ needs_sudo() {
 # abort if run as root
 # @NOTE: this might change in the future but right now we do not understand all the complexities around this
 if [[ "${EUID:-${UID}}" == "0" ]]; then
-  abort "Cannot run this script as root"
+  abort "cannot run this script as root."
 fi
 
 # abort if unsupported os
 if [[ "${OS}" != "macos" ]]; then
   abort_multi "$(cat <<EOABORT
-This script is only for ${tty_green}macOS${tty_reset}. ${tty_red}${OS}${tty_reset} is not supported!
-Check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
+this script only supports ${tty_ts}macOS${tty_reset}; ${tty_red}${OS}${tty_reset} is not supported.
+check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
 fi
@@ -1856,8 +1907,8 @@ fi
 # abort if unsupported arch
 if [[ "${ARCH}" != "x64" ]] && [[ "${ARCH}" != "arm64" ]]; then
   abort_multi "$(cat <<EOABORT
-This script currently only supports ${tty_green}x64${tty_reset} and ${tty_green}arm64${tty_reset} systems.
-Check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
+this script currently only supports ${tty_ts}x64${tty_reset} and ${tty_ts}arm64${tty_reset} systems.
+check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
 fi
@@ -1867,8 +1918,8 @@ if [[ "${OS}" == "macos" ]]; then
   macos_version="$(major_minor "$(/usr/bin/sw_vers -productVersion)")"
   if ! version_compare "${macos_version}" "${MACOS_OLDEST_SUPPORTED}"; then
     abort_multi "$(cat <<EOABORT
-Your macOS version ${tty_red}${macos_version}${tty_reset} is ${tty_bold}too old${tty_reset}! Min required version is ${tty_green}${MACOS_OLDEST_SUPPORTED}${tty_reset}
-Check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
+your macOS version ${tty_red}${macos_version}${tty_reset} is ${tty_bold}too old${tty_reset}; minimum supported version is ${tty_ts}${MACOS_OLDEST_SUPPORTED}${tty_reset}.
+check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
   fi
@@ -1890,9 +1941,9 @@ refresh_permission_dirs
 
 if needs_sudo && ! have_sudo_access; then
   abort_multi "$(cat <<EOABORT
-${tty_bold}${USER}${tty_reset} cannot write to ${tty_red}${TARGET}${tty_reset} or the expected Homebrew location ${tty_red}${HOMEBREW_PREFIX}${tty_reset} and is not a ${tty_bold}sudo${tty_reset} user!
-Rerun setup with a sudoer or use --target to install into a directory ${tty_bold}${USER}${tty_reset} can write to.
-For more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
+${tty_bold}${USER}${tty_reset} cannot write to ${tty_red}${TARGET}${tty_reset} or the expected Homebrew location ${tty_red}${HOMEBREW_PREFIX}${tty_reset} and is not a ${tty_bold}sudo${tty_reset} user.
+rerun setup with a sudoer or use --target to install into a directory ${tty_bold}${USER}${tty_reset} can write to.
+for more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
 fi
@@ -1905,18 +1956,18 @@ fi
 # shellcheck disable=SC2016
 if [[ -z "${NONINTERACTIVE-}" ]]; then
   if [[ -n "${CI-}" ]]; then
-    warn 'Running in non-interactive mode because `$CI` is set.'
+    warn 'running in non-interactive mode because `$CI` is set.'
     NONINTERACTIVE=1
   elif [[ ! -t 0 ]]; then
     if [[ -z "${INTERACTIVE-}" ]];  then
-      warn 'Running in non-interactive mode because `stdin` is not a TTY.'
+      warn 'running in non-interactive mode because `stdin` is not a TTY.'
       NONINTERACTIVE=1
     else
-      warn 'Running in interactive mode despite `stdin` not being a TTY because `$INTERACTIVE` is set.'
+      warn 'running in interactive mode despite `stdin` not being a TTY because `$INTERACTIVE` is set.'
     fi
   fi
 else
-  log "${tty_tp}running${tty_reset} in ${tty_yellow}non-interactive mode${tty_reset} ${tty_dim}because \$NONINTERACTIVE is set${tty_reset}"
+  log "${tty_tp}running${tty_reset} in ${tty_ts}non-interactive mode${tty_reset} ${tty_dim}because \$NONINTERACTIVE is set${tty_reset}"
 fi
 
 ####################################################################### script
@@ -1932,7 +1983,7 @@ getc() {
 execute() {
   debug "${tty_tp}running${tty_reset}" "$@"
   if ! "$@"; then
-    abort "$(printf "Failed during: %s" "$(shell_join "$@")")"
+    abort "$(printf "failed during: %s" "$(shell_join "$@")")"
   fi
 }
 

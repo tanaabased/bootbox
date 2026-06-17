@@ -1,21 +1,43 @@
 import { execFile } from 'node:child_process';
-import { chmod, cp, mkdir, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, copyFile, mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
+const execFileAsync = promisify(execFile);
 const REPO_URL = new URL('../', import.meta.url);
 const REPO_ROOT = fileURLToPath(REPO_URL);
 const DIST_URL = new URL('./dist/', REPO_URL);
 const PUBLIC_ORIGIN = 'https://bootbox.tanaab.sh';
+const PUBLISHED_SCRIPTS = [
+  {
+    sourcePath: 'bootbox.sh',
+    destinationPath: 'bootbox.sh',
+    executable: true,
+  },
+];
+const DIST_FILES = [
+  ...PUBLISHED_SCRIPTS,
+  {
+    sourcePath: 'site/index.html',
+    destinationPath: 'index.html',
+    executable: false,
+  },
+  {
+    sourcePath: 'site/llms.txt',
+    destinationPath: 'llms.txt',
+    executable: false,
+  },
+];
 const ROBOTS_URL = new URL('./robots.txt', DIST_URL);
 const SITEMAP_URL = new URL('./sitemap.xml', DIST_URL);
-const BOOTBOX_SOURCE_URL = new URL('./bootbox.sh', REPO_URL);
-const DIST_FILES = [
-  ['bootbox.sh', 'bootbox.sh'],
-  ['site/index.html', 'index.html'],
+const PUBLIC_RESOURCES = [
+  ...PUBLISHED_SCRIPTS.map(({ destinationPath }) => ({
+    destinationPath,
+  })),
+  {
+    destinationPath: 'llms.txt',
+  },
 ];
-const EXECUTABLES = ['bootbox.sh'];
-const execFileAsync = promisify(execFile);
 
 function log(message) {
   process.stdout.write(`${message}\n`);
@@ -39,7 +61,7 @@ async function getGitLastmod() {
   try {
     const { stdout } = await execFileAsync(
       'git',
-      ['log', '-1', '--format=%cI', '--', 'bootbox.sh'],
+      ['log', '-1', '--format=%cI', '--', ...PUBLISHED_SCRIPTS.map(({ sourcePath }) => sourcePath)],
       {
         cwd: REPO_ROOT,
       },
@@ -53,9 +75,12 @@ async function getGitLastmod() {
 
 async function getFileLastmod() {
   try {
-    const fileStats = await stat(BOOTBOX_SOURCE_URL);
+    const fileStats = await Promise.all(
+      PUBLISHED_SCRIPTS.map(({ sourcePath }) => stat(new URL(sourcePath, REPO_URL))),
+    );
+    const latestTimestamp = Math.max(...fileStats.map((entry) => entry.mtimeMs));
 
-    return normalizeLastmod(fileStats.mtime.toISOString());
+    return normalizeLastmod(new Date(latestTimestamp).toISOString());
   } catch {
     return null;
   }
@@ -84,23 +109,32 @@ async function resolveSitemapLastmod() {
 }
 
 function renderSitemap(lastmod) {
-  return `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${PUBLIC_ORIGIN}/bootbox.sh</loc>
+  const urls = PUBLIC_RESOURCES.map(
+    ({ destinationPath }) => `  <url>
+    <loc>${PUBLIC_ORIGIN}/${destinationPath}</loc>
     <lastmod>${lastmod}</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
-  </url>
+  </url>`,
+  ).join('\n');
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${urls}
 </urlset>
 `;
 }
 
 function renderRobots() {
+  const allowedPaths = PUBLIC_RESOURCES.map(
+    ({ destinationPath }) => `Allow: /${destinationPath}`,
+  ).join('\n');
+
   return `User-agent: *
 Disallow: /
 Sitemap: ${PUBLIC_ORIGIN}/sitemap.xml
 Host: ${PUBLIC_ORIGIN}
-Allow: /bootbox.sh
+${allowedPaths}
 Allow: /sitemap.xml
 `;
 }
@@ -114,7 +148,7 @@ async function copyDistFile(sourcePath, destinationPath) {
   const sourceUrl = new URL(sourcePath, REPO_URL);
   const destinationUrl = new URL(destinationPath, DIST_URL);
 
-  await cp(sourceUrl, destinationUrl, { force: true });
+  await copyFile(sourceUrl, destinationUrl);
 
   return destinationUrl.pathname;
 }
@@ -140,7 +174,7 @@ async function writeRobots() {
 async function main() {
   await resetDist();
 
-  for (const [sourcePath, destinationPath] of DIST_FILES) {
+  for (const { sourcePath, destinationPath } of DIST_FILES) {
     const copiedPath = await copyDistFile(sourcePath, destinationPath);
     log(`copied ${copiedPath}`);
   }
@@ -148,11 +182,19 @@ async function main() {
   await writeSitemap();
   await writeRobots();
 
-  for (const executable of EXECUTABLES) {
-    await makeExecutable(executable);
+  for (const { destinationPath, executable } of PUBLISHED_SCRIPTS) {
+    if (executable) {
+      await makeExecutable(destinationPath);
+    }
   }
 
   log(`prepared ${DIST_URL.pathname}`);
 }
 
-await main();
+try {
+  await main();
+} catch (error) {
+  const output = error instanceof Error ? (error.stack ?? error.message) : String(error);
+  process.stderr.write(`${output}\n`);
+  process.exit(1);
+}

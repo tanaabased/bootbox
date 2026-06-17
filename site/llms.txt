@@ -1,0 +1,13 @@
+# Bootbox
+
+> Bootbox is a hosted macOS 26.x bootstrap script for Homebrew, Brewfiles, dotpackages, and 1Password-backed SSH key material.
+
+Bootbox is the reusable upstream bootstrap layer for Tanaab machine-profile wrappers. It owns generic Homebrew core readiness, Brewfile application, dotpackage stowing, and optional private SSH key installation. Wrapper-specific machine profiles, agent runtime setup, app onboarding, and privileged host preparation belong in downstream repos such as `me`, `emori`, and `agentbox`.
+
+## Primary Resources
+
+- [Hosted bootbox script](https://bootbox.tanaab.sh/bootbox.sh): The generated shell entrypoint for bootstrapping a Mac.
+- [GitHub repository](https://github.com/tanaabased/bootbox): Source code, README, workflows, and examples.
+- [README](https://github.com/tanaabased/bootbox#readme): Human setup, usage, configuration, and support guidance.
+- [Releases](https://github.com/tanaabased/bootbox/releases): Published release tags for hosted script updates.
+- [Issues](https://github.com/tanaabased/bootbox/issues): Bug reports, regressions, and feature requests.
