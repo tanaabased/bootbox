@@ -1,10 +1,10 @@
-# Bootbox
+# bootbox
 
-Bootbox is a hosted bootstrap script for macOS 26 or newer that turns a fresh box into a usable
+`bootbox` is a hosted bootstrap script for macOS 26 or newer that turns a fresh box into a usable
 base machine. It installs Homebrew, applies one or more Brewfiles, stows one or more dotpackages,
 and can install private SSH keys from a 1Password vault.
 
-Bootbox is meant to be a reusable base script that narrower machine profiles can wrap and extend.
+`bootbox` is meant to be a reusable base script that narrower machine profiles can wrap and extend.
 Examples of that pattern include [pirog/me](https://github.com/pirog/me),
 [tanaabased/agentbox](https://github.com/tanaabased/agentbox), and
 [tanaabased/emori](https://github.com/tanaabased/emori).
@@ -19,14 +19,14 @@ curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | bash
 
 ## Installation
 
-Bootbox is designed to be run directly from the hosted script at
+`bootbox` is designed to be run directly from the hosted script at
 `https://bootbox.tanaab.sh/bootbox.sh`.
 
 - It requires Bash and cURL to start.
 - It supports installing into the default home directory target or a custom `--target`.
 - For 1Password-backed SSH keys, provide a service account token with `--op-token`,
   `BOOTBOX_OP_TOKEN`, or `OP_SERVICE_ACCOUNT_TOKEN`.
-- Bootbox currently installs the beta 1Password CLI cask because downstream machine profiles need
+- `bootbox` currently installs the beta 1Password CLI cask because downstream machine profiles need
   Environment commands such as `op run --environment`. This should return to stable
   `1password-cli` once stable 1Password CLI includes that support.
 - The hosted URL serves the generated `dist/bootbox.sh` entrypoint used for releases.
@@ -34,7 +34,7 @@ Bootbox is designed to be run directly from the hosted script at
 ## Usage
 
 The main flow is: choose a target machine, decide which Brewfiles and dotpackages you want, and then
-run Bootbox once to converge the box into that state. If you have installed the hosted script as a
+run `bootbox` once to converge the box into that state. If you have installed the hosted script as a
 local `bootbox` command, the common flows look like this:
 
 ```sh
@@ -52,7 +52,7 @@ including multi-Brewfile installs, dotpackage installs, and live 1Password SSH k
 
 ## Configuration
 
-Bootbox keeps its configuration surface intentionally small.
+`bootbox` keeps its configuration surface intentionally small.
 
 - `BOOTBOX_BREWFILE`: comma-separated Brewfile paths or URLs
 - `BOOTBOX_DOTPKG`: comma-separated dotpackage paths
@@ -60,7 +60,7 @@ Bootbox keeps its configuration surface intentionally small.
 - `BOOTBOX_OP_TOKEN`: 1Password service account token
 - `BOOTBOX_TARGET`: install target directory
 - `BOOTBOX_FORCE`: enables supported overwrite behavior
-- `BOOTBOX_QUIET`: suppresses Bootbox status output for wrapper callers
+- `BOOTBOX_QUIET`: suppresses `bootbox` status output for wrapper callers
 - `BOOTBOX_NO_SUDO`: disables sudo checks, prompts, and elevation
 - `BOOTBOX_DEBUG`: enables debug logging
 - `NONINTERACTIVE` and `CI`: disable prompts for automated runs
@@ -92,8 +92,8 @@ curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | BOOTBOX_SSH_KEY="my-vault/id_w
 For the complete and current documented CLI surface, prefer `--help`. That output is the fastest
 source of truth for supported public flags, environment variables, and guardrails.
 
-For scripts that only need to know whether Bootbox's built-in Homebrew base is already satisfied,
-there is also a hidden `--check-core` flag. It exits `0` when Homebrew plus Bootbox's core
+For scripts that only need to know whether `bootbox`'s built-in Homebrew base is already satisfied,
+there is also a hidden `--check-core` flag. It exits `0` when Homebrew plus `bootbox`'s core
 packages are already installed, and exits `1` otherwise. It intentionally stays out of `--help`,
 and it does not check Brewfile entries, dotpackages, SSH keys, or target permissions.
 
@@ -106,12 +106,12 @@ fi
 ```
 
 Wrapper scripts that already know sudo is unavailable can pass `--no-sudo` or
-`BOOTBOX_NO_SUDO=1`. In that mode Bootbox does not probe, prompt for, or invoke sudo; requested
+`BOOTBOX_NO_SUDO=1`. In that mode `bootbox` does not probe, prompt for, or invoke sudo; requested
 work must already be writable by the current user.
 
 ## Development
 
-Bootbox uses Bun for its repo-local tooling and publishes a Netlify-ready `dist/` directory.
+`bootbox` uses Bun for its repo-local tooling and publishes a Netlify-ready `dist/` directory.
 
 ```sh
 bun install

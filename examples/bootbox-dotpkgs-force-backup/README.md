@@ -1,6 +1,6 @@
 # Bootbox Dotpkgs Force Backup Example
 
-This example verifies that Bootbox backs up conflicting target files before stowing a replacement
+This example verifies that `bootbox` backs up conflicting target files before stowing a replacement
 when `BOOTBOX_FORCE=1` is set.
 
 ## Setup

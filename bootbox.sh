@@ -2007,8 +2007,8 @@ refresh_permission_dirs
 
 if no_sudo_enabled && [[ "${BREW_NEEDS_INSTALL:-0}" == "1" ]]; then
   abort_multi "$(cat <<EOABORT
-Homebrew is missing and Bootbox is running with ${tty_bold}--no-sudo${tty_reset}.
-install Homebrew from a privileged machine-prep layer first, then rerun Bootbox without requiring sudo.
+Homebrew is missing and bootbox is running with ${tty_bold}--no-sudo${tty_reset}.
+install Homebrew from a privileged machine-prep layer first, then rerun bootbox without requiring sudo.
 for more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
@@ -2016,7 +2016,7 @@ fi
 
 if needs_sudo && no_sudo_enabled; then
   abort_multi "$(cat <<EOABORT
-Bootbox is running with ${tty_bold}--no-sudo${tty_reset}, but ${tty_bold}${USER}${tty_reset} cannot write to ${tty_red}${TARGET}${tty_reset} or the expected Homebrew location ${tty_red}${HOMEBREW_PREFIX}${tty_reset}.
+bootbox is running with ${tty_bold}--no-sudo${tty_reset}, but ${tty_bold}${USER}${tty_reset} cannot write to ${tty_red}${TARGET}${tty_reset} or the expected Homebrew location ${tty_red}${HOMEBREW_PREFIX}${tty_reset}.
 prepare writable Homebrew and target paths in the wrapper or machine-prep layer, or use --target to install into a directory ${tty_bold}${USER}${tty_reset} can write to.
 for more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT

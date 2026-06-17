@@ -5,10 +5,10 @@ When this file conflicts with broader defaults, this file wins for work in `boot
 
 ## Purpose
 
-- This repo owns Bootbox, the reusable upstream macOS 26.x bootstrap layer for Homebrew,
+- This repo owns `bootbox`, the reusable upstream macOS 26.x bootstrap layer for Homebrew,
   Brewfiles, dotpackages, and 1Password-backed SSH key material.
-- Downstream machine profiles such as `me`, `emori`, and `agentbox` may wrap Bootbox, but wrapper
-  concerns should stay in those repos unless Bootbox's generic contract is intentionally changed.
+- Downstream machine profiles such as `me`, `emori`, and `agentbox` may wrap `bootbox`, but wrapper
+  concerns should stay in those repos unless `bootbox`'s generic contract is intentionally changed.
 
 ## Source Of Truth
 
@@ -23,6 +23,14 @@ When this file conflicts with broader defaults, this file wins for work in `boot
 - [`scripts/build-dist.js`](/Users/pirog/tanaab/bootbox/scripts/build-dist.js),
   [`site/`](/Users/pirog/tanaab/bootbox/site), `netlify.toml`, release workflows, and committed
   `dist/` files own the hosted-script publishing surface.
+
+## Naming And Style
+
+- In markdown and docs prose, stylize this project as `bootbox`.
+- Markdown H1 titles in `examples/**/README.md` may capitalize the leading `B` when the title
+  starts with the project name.
+- Preserve literal identifiers exactly as written, including commands, paths, URLs, environment
+  variables, labels, generated strings, repository names, and fixture values.
 
 ## Build Artifacts
 
@@ -47,7 +55,7 @@ When this file conflicts with broader defaults, this file wins for work in `boot
 - Any `bootbox.sh` public interface change must check `README.md`, `examples/bootbox-cli-contract`,
   and the affected mutating examples.
 - Keep `--check-core` hidden from `--help`; it is an intentionally undocumented 0/1 readiness probe
-  for Bootbox's built-in Homebrew core only.
+  for `bootbox`'s built-in Homebrew core only.
 - Keep `--check-core` quiet under normal operation; if its behavior changes, update the CLI
   contract example explicitly.
 - Keep `--no-sudo` as a strict no-elevation mode: no sudo probes, prompts, timestamp cleanup, or
@@ -96,7 +104,7 @@ When this file conflicts with broader defaults, this file wins for work in `boot
 
 - Netlify publishes committed `dist/`, but local agents should not update it directly; CI/release
   workflows own generated `dist/` changes.
-- Release workflows use the Bootbox-style shell-script distribution flow. Keep `dist/bootbox.sh` as
+- Release workflows use the `bootbox`-style shell-script distribution flow. Keep `dist/bootbox.sh` as
   the stamped hosted entrypoint.
 - Do not add unrelated package archives or upload behavior unless the release contract explicitly
   changes.

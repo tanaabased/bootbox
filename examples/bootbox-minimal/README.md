@@ -1,6 +1,6 @@
 # Bootbox Minimal Example
 
-This example is the smallest markdown-first bootstrap test for `bootbox`. It forces Bootbox's
+This example is the smallest markdown-first bootstrap test for `bootbox`. It forces `bootbox`'s
 core readiness check into a failing state when Homebrew is already present, then runs the default
 setup path against an example-local target directory and verifies that the core check and expected
 toolchain are satisfied afterwards.
