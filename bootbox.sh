@@ -135,34 +135,55 @@ value_enabled() {
   esac
 }
 
+env_value() {
+  local preferred_name="$1"
+  local legacy_name="$2"
+  local fallback="${3-}"
+  local preferred_value="${!preferred_name-}"
+  local legacy_value="${!legacy_name-}"
+
+  if [[ -n "${preferred_value}" ]]; then
+    printf "%s" "${preferred_value}"
+  elif [[ -n "${legacy_value}" ]]; then
+    printf "%s" "${legacy_value}"
+  else
+    printf "%s" "${fallback}"
+  fi
+}
+
+env_list_value() {
+  local preferred_name="$1"
+  local preferred_plural_name="$2"
+  local legacy_name="$3"
+  local legacy_plural_name="$4"
+  local primary
+  local secondary
+
+  primary="${!preferred_name-}"
+  secondary="${!preferred_plural_name-}"
+  if [[ -n "${primary}" || -n "${secondary}" ]]; then
+    printf "%s%s%s" "${primary}" "${primary:+${secondary:+,}}" "${secondary}"
+    return 0
+  fi
+
+  primary="${!legacy_name-}"
+  secondary="${!legacy_plural_name-}"
+  printf "%s%s%s" "${primary}" "${primary:+${secondary:+,}}" "${secondary}"
+}
+
 # Set cheap defaults needed by usage/arg parsing first so --help/--version stay fast.
 #
 # RUNNER_DEBUG is used here so we can get good debug output when toggled in GitHub Actions
 # see https://github.blog/changelog/2022-05-24-github-actions-re-run-jobs-with-debug-logging/
-DEBUG="${TANAAB_DEBUG:-${DEBUG:-${RUNNER_DEBUG:-}}}"
-FORCE="${TANAAB_FORCE:-}"
-QUIET="${TANAAB_QUIET:-}"
+DEBUG="$(env_value BOOTBOX_DEBUG TANAAB_DEBUG "${DEBUG:-${RUNNER_DEBUG:-}}")"
+FORCE="$(env_value BOOTBOX_FORCE TANAAB_FORCE)"
+QUIET="$(env_value BOOTBOX_QUIET TANAAB_QUIET)"
 CHECK_CORE=""
-TARGET="${TANAAB_TARGET:-$HOME}"
-BREWFILES_CSV="${TANAAB_BREWFILE:-}"
-DOTPKGS_CSV="${TANAAB_DOTPKG:-}"
-OP_TOKEN="${TANAAB_OP_TOKEN:-${OP_SERVICE_ACCOUNT_TOKEN:-}}"
-SSH_KEYS_CSV="${TANAAB_SSH_KEY:-}"
-
-# accommodate TANAAB_BREWFILES as well
-if [[ -n "${TANAAB_BREWFILES:-}" ]]; then
-  BREWFILES_CSV="${BREWFILES_CSV}${BREWFILES_CSV:+,}${TANAAB_BREWFILES}"
-fi
-
-# accommodate TANAAB_DOTPKGS as well
-if [[ -n "${TANAAB_DOTPKGS:-}" ]]; then
-  DOTPKGS_CSV="${DOTPKGS_CSV}${DOTPKGS_CSV:+,}${TANAAB_DOTPKGS}"
-fi
-
-# accommodate TANAAB_SSH_KEYS as well
-if [[ -n "${TANAAB_SSH_KEYS:-}" ]]; then
-  SSH_KEYS_CSV="${SSH_KEYS_CSV}${SSH_KEYS_CSV:+,}${TANAAB_SSH_KEYS}"
-fi
+TARGET="$(env_value BOOTBOX_TARGET TANAAB_TARGET "$HOME")"
+BREWFILES_CSV="$(env_list_value BOOTBOX_BREWFILE BOOTBOX_BREWFILES TANAAB_BREWFILE TANAAB_BREWFILES)"
+DOTPKGS_CSV="$(env_list_value BOOTBOX_DOTPKG BOOTBOX_DOTPKGS TANAAB_DOTPKG TANAAB_DOTPKGS)"
+OP_TOKEN="$(env_value BOOTBOX_OP_TOKEN TANAAB_OP_TOKEN "${OP_SERVICE_ACCOUNT_TOKEN:-}")"
+SSH_KEYS_CSV="$(env_list_value BOOTBOX_SSH_KEY BOOTBOX_SSH_KEYS TANAAB_SSH_KEY TANAAB_SSH_KEYS)"
 
 # collect them all togethers with fallback if still empty
 if [[ -z "${BREWFILES_CSV}" ]] && [[ -f "./Brewfile" ]]; then
@@ -333,7 +354,7 @@ usage() {
   fi
 
   cat <<EOS
-Usage: ${tty_dim}[NONINTERACTIVE=1] [CI=1] [TANAAB_*...]${tty_reset} ${tty_bold}${SCRIPT_NAME}${tty_reset} ${tty_dim}[options]${tty_reset}
+Usage: ${tty_dim}[NONINTERACTIVE=1] [CI=1] [BOOTBOX_*...]${tty_reset} ${tty_bold}${SCRIPT_NAME}${tty_reset} ${tty_dim}[options]${tty_reset}
 
 ${tty_tp}Options:${tty_reset}
   --brewfile       installs brewfiles from local paths or URLs ${tty_dim}[default: ${brewfiles_display}]${tty_reset}
@@ -349,14 +370,14 @@ ${tty_tp}Options:${tty_reset}
   -y, --yes        runs with all defaults and no prompts, sets NONINTERACTIVE=1
 
 ${tty_tp}Environment Variables:${tty_reset}
-  TANAAB_BREWFILE  same as --brewfile
-  TANAAB_DOTPKG    same as --dotpkg
-  TANAAB_SSH_KEY   same as --ssh-key
-  TANAAB_OP_TOKEN  same as --op-token; falls back to OP_SERVICE_ACCOUNT_TOKEN
-  TANAAB_TARGET    same as --target
-  TANAAB_FORCE     same as --force
-  TANAAB_QUIET     same as --quiet
-  TANAAB_DEBUG     same as --debug
+  BOOTBOX_BREWFILE same as --brewfile
+  BOOTBOX_DOTPKG   same as --dotpkg
+  BOOTBOX_SSH_KEY  same as --ssh-key
+  BOOTBOX_OP_TOKEN same as --op-token; falls back to OP_SERVICE_ACCOUNT_TOKEN
+  BOOTBOX_TARGET   same as --target
+  BOOTBOX_FORCE    same as --force
+  BOOTBOX_QUIET    same as --quiet
+  BOOTBOX_DEBUG    same as --debug
   NONINTERACTIVE   same as --yes
   CI               runs in CI mode and disables prompts
 EOS
@@ -783,7 +804,7 @@ default_homebrew_prefix() {
 }
 
 # core packages that should be present regardless of any user-provided Brewfile
-declare -a TANAAB_CORE_BREW_PACKAGES=(
+declare -a BOOTBOX_CORE_BREW_PACKAGES=(
   "formula|git|git"
   "cask|1password-cli@beta|op"
   "formula|curl|curl"
@@ -793,17 +814,17 @@ declare -a TANAAB_CORE_BREW_PACKAGES=(
 )
 
 # GET THE LTF right away once we know we are not exiting through usage/version.
-TANAAB_TMPFILE="$(mktemp -t tanaab.XXXXXX)"
+BOOTBOX_TMPFILE="$(mktemp -t bootbox.XXXXXX)"
 
 # derive the rest of the runtime defaults after argument parsing
 detect_arch
 detect_os
 
-ARCH="${TANAAB_ARCH:-"$DETECTED_ARCH"}"
-OS="${TANAAB_OS:-"$DETECTED_OS"}"
+ARCH="$(env_value BOOTBOX_ARCH TANAAB_ARCH "$DETECTED_ARCH")"
+OS="$(env_value BOOTBOX_OS TANAAB_OS "$DETECTED_OS")"
 HOMEBREW_PREFIX="${HOMEBREW_PREFIX:-"$(default_homebrew_prefix "$ARCH")"}"
 HOMEBREW_INSTALLER_URL="https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
-TANAAB_TMPDIR=$(get_abs_dir "$TANAAB_TMPFILE")
+BOOTBOX_TMPDIR=$(get_abs_dir "$BOOTBOX_TMPFILE")
 
 # USER isn't always set so provide a fall back for the installer and subprocesses.
 if [[ -z "${USER-}" ]]; then
@@ -911,8 +932,8 @@ debug raw HOMEBREW_PREFIX="$HOMEBREW_PREFIX"
 debug raw TARGET="$TARGET"
 debug raw OS="$OS"
 debug raw USER="$USER"
-debug raw TMPFILE="$TANAAB_TMPFILE"
-debug raw TMPDIR="$TANAAB_TMPDIR"
+debug raw TMPFILE="$BOOTBOX_TMPFILE"
+debug raw TMPDIR="$BOOTBOX_TMPDIR"
 
 #######################################################################  tool-verification
 
@@ -1132,7 +1153,7 @@ plan_homebrew() {
 }
 
 install_homebrew() {
-  local installer="${TANAAB_TMPDIR}/homebrew-install.sh"
+  local installer="${BOOTBOX_TMPDIR}/homebrew-install.sh"
 
   log "${tty_tp}installing${tty_reset} ${tty_ts}homebrew${tty_reset} ${tty_dim}because it is not installed${tty_reset}"
   execute "${CURL}" \
@@ -1171,7 +1192,7 @@ plan_core_homebrew_packages() {
   CORE_BREW_CASK_DISPLAY_TO_INSTALL=()
   CORE_BREW_DISPLAY_TO_INSTALL=()
 
-  for entry in "${TANAAB_CORE_BREW_PACKAGES[@]}"; do
+  for entry in "${BOOTBOX_CORE_BREW_PACKAGES[@]}"; do
     IFS='|' read -r type package display <<< "${entry}"
 
     if [[ "${BREW_NEEDS_INSTALL:-0}" == "1" ]]; then
@@ -1226,7 +1247,7 @@ fetch_brewfile_url() {
   local url="$1"
   local destination
 
-  destination="$(mktemp "${TANAAB_TMPDIR}/brewfile-url.XXXXXX")"
+  destination="$(mktemp "${BOOTBOX_TMPDIR}/brewfile-url.XXXXXX")"
   debug "fetching brewfile ${url} to ${destination}"
 
   if ! "${CURL}" \
@@ -1278,7 +1299,7 @@ prepare_effective_brewfile() {
     return 0
   fi
 
-  effective_brewfile="$(mktemp "${TANAAB_TMPDIR}/brewfile-effective.XXXXXX")"
+  effective_brewfile="$(mktemp "${BOOTBOX_TMPDIR}/brewfile-effective.XXXXXX")"
   : > "${effective_brewfile}"
 
   for source_brewfile in "${RESOLVED_BREWFILES[@]}"; do
@@ -1450,7 +1471,7 @@ plan_ssh_keys() {
   if [[ -z "${OP_TOKEN:-}" ]]; then
     abort_multi "$(cat <<EOABORT
 ssh key installation requires a 1password service account token.
-set TANAAB_OP_TOKEN or OP_SERVICE_ACCOUNT_TOKEN, or pass --op-token.
+set BOOTBOX_OP_TOKEN or OP_SERVICE_ACCOUNT_TOKEN, or pass --op-token.
 EOABORT
 )"
   fi
@@ -1537,7 +1558,7 @@ EOABORT
       log "${tty_tp}installing${tty_reset} ssh key ${tty_ts}${filename}${tty_reset} ${tty_dim}into${tty_reset} ${tty_ts}${ssh_dir}${tty_reset}"
     fi
 
-    key_tmpfile="$(mktemp "${TANAAB_TMPDIR}/ssh-key.XXXXXX")"
+    key_tmpfile="$(mktemp "${BOOTBOX_TMPDIR}/ssh-key.XXXXXX")"
     op_read_ssh_key_to_file "${ssh_key}" "${key_tmpfile}"
     auto_mv "${key_tmpfile}" "${destination_path}"
     auto_chmod 600 "${destination_path}"
@@ -1900,7 +1921,7 @@ debug "using the cURL at ${CURL}"
 ####################################################################### version validation
 
 needs_sudo() {
-  if [[ ! -w "$HOMEBREW_PERM_DIR" ]] || [[ ! -w "$PERM_DIR" ]] || [[ ! -w "$TANAAB_TMPDIR" ]]; then
+  if [[ ! -w "$HOMEBREW_PERM_DIR" ]] || [[ ! -w "$PERM_DIR" ]] || [[ ! -w "$BOOTBOX_TMPDIR" ]]; then
     return 0;
   else
     return 1;

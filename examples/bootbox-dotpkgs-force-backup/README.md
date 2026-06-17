@@ -1,7 +1,7 @@
 # Bootbox Dotpkgs Force Backup Example
 
 This example verifies that Bootbox backs up conflicting target files before stowing a replacement
-when `TANAAB_FORCE=1` is set.
+when `BOOTBOX_FORCE=1` is set.
 
 ## Setup
 
@@ -17,9 +17,9 @@ EOF
 
 # should back up the conflicting file when force mode is enabled
 CI=1 NONINTERACTIVE=1 \
-TANAAB_DOTPKG="dotpkgs/git" \
-TANAAB_FORCE=1 \
-TANAAB_TARGET="$(pwd)/.tmp/home" \
+BOOTBOX_DOTPKG="dotpkgs/git" \
+BOOTBOX_FORCE=1 \
+BOOTBOX_TARGET="$(pwd)/.tmp/home" \
 bootbox > .tmp/setup.log 2>&1
 ```
 

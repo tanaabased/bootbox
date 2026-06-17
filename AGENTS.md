@@ -55,7 +55,7 @@ When this file conflicts with broader defaults, this file wins for work in `boot
 ## Secrets And Logging
 
 - Never print raw 1Password service account credentials in debug, help, or error output.
-- Mask token-bearing values from `--op-token`, `TANAAB_OP_TOKEN`, and
+- Mask token-bearing values from `--op-token`, `BOOTBOX_OP_TOKEN`, legacy `TANAAB_OP_TOKEN`, and
   `OP_SERVICE_ACCOUNT_TOKEN` when they appear in any diagnostic surface.
 - Preserve the repo's CLI color conventions for status verbs and targets; use the established
   Tanaab styles rather than ad hoc color choices for action labels such as `running`.
@@ -88,7 +88,7 @@ When this file conflicts with broader defaults, this file wins for work in `boot
 - Do not treat local `dist/` regeneration as part of normal validation; if build-artifact
   verification matters, say it was deferred to CI.
 - Live 1Password-backed SSH key validation remains CI-owned because it depends on the
-  `TANAAB_OP_TESTVAULT` secret on fresh macOS runners.
+  `BOOTBOX_OP_TESTVAULT` CI environment value on fresh macOS runners.
 
 ## Release And Distribution
 
@@ -103,8 +103,8 @@ When this file conflicts with broader defaults, this file wins for work in `boot
 
 ## `bootbox.sh` Invariants
 
-- Preserve the public `TANAAB_*` namespace unless the task explicitly changes Bootbox's upstream
-  interface.
+- Preserve the public `BOOTBOX_*` namespace. Legacy `TANAAB_*` support is compatibility-only and
+  should not be documented outside code or explicit legacy behavior tests.
 - Preserve `--check-core` as a hidden, quiet probe for built-in Homebrew core readiness only.
 - Preserve token masking in debug output and do not reintroduce raw argument logging.
 - Keep repeatable CLI inputs replacing env-sourced lists when any corresponding CLI flag is

@@ -21,7 +21,7 @@ command -v bootbox >/dev/null
 bootbox --help | grep -F 'Usage:'
 bootbox --help | grep -F '[NONINTERACTIVE=1]'
 bootbox --help | grep -F '[CI=1]'
-bootbox --help | grep -F '[TANAAB_*...]'
+bootbox --help | grep -F '[BOOTBOX_*...]'
 bootbox --help | grep -F 'bootbox [options]'
 
 # should document public options
@@ -37,16 +37,19 @@ bootbox --help | grep -F -- '--force'
 bootbox --help | grep -F -- '--yes'
 
 # should document public environment variables
-bootbox --help | grep -F 'TANAAB_BREWFILE  same as --brewfile'
-bootbox --help | grep -F 'TANAAB_DOTPKG    same as --dotpkg'
-bootbox --help | grep -F 'TANAAB_SSH_KEY   same as --ssh-key'
-bootbox --help | grep -F 'TANAAB_OP_TOKEN  same as --op-token; falls back to OP_SERVICE_ACCOUNT_TOKEN'
-bootbox --help | grep -F 'TANAAB_TARGET    same as --target'
-bootbox --help | grep -F 'TANAAB_FORCE     same as --force'
-bootbox --help | grep -F 'TANAAB_QUIET     same as --quiet'
-bootbox --help | grep -F 'TANAAB_DEBUG     same as --debug'
+bootbox --help | grep -F 'BOOTBOX_BREWFILE same as --brewfile'
+bootbox --help | grep -F 'BOOTBOX_DOTPKG   same as --dotpkg'
+bootbox --help | grep -F 'BOOTBOX_SSH_KEY  same as --ssh-key'
+bootbox --help | grep -F 'BOOTBOX_OP_TOKEN same as --op-token; falls back to OP_SERVICE_ACCOUNT_TOKEN'
+bootbox --help | grep -F 'BOOTBOX_TARGET   same as --target'
+bootbox --help | grep -F 'BOOTBOX_FORCE    same as --force'
+bootbox --help | grep -F 'BOOTBOX_QUIET    same as --quiet'
+bootbox --help | grep -F 'BOOTBOX_DEBUG    same as --debug'
 bootbox --help | grep -F 'NONINTERACTIVE   same as --yes'
 bootbox --help | grep -F 'CI               runs in CI mode and disables prompts'
+
+# should not document legacy environment variables
+if bootbox --help | grep -F 'TANAAB_'; then exit 1; fi
 
 # should not expose a CI option
 if bootbox --help | grep -F -- '--ci'; then exit 1; fi
@@ -71,32 +74,32 @@ test ! -s .tmp/check-core-quiet.stdout
 grep -F 'running hidden --check-core mode' .tmp/check-core-quiet.stderr
 
 # should mask token defaults in help
-TANAAB_OP_TOKEN='secret-example-value' bootbox --help | grep -F 'secr...alue'
-if TANAAB_OP_TOKEN='secret-example-value' bootbox --help | grep -F 'secret-example-value'; then exit 1; fi
+BOOTBOX_OP_TOKEN='secret-example-value' bootbox --help | grep -F 'secr...alue'
+if BOOTBOX_OP_TOKEN='secret-example-value' bootbox --help | grep -F 'secret-example-value'; then exit 1; fi
 
 # should allow an inline empty op token to mean no token
-TANAAB_OP_TOKEN='secret-example-value' bootbox --op-token= --help | grep -F -- '--op-token       auths with 1password service account token [default: none]'
+BOOTBOX_OP_TOKEN='secret-example-value' bootbox --op-token= --help | grep -F -- '--op-token       auths with 1password service account token [default: none]'
 
 # should show debug, quiet, and force defaults
 bootbox --help | grep -F -- '--debug          shows debug messages [default: off]'
 bootbox --debug --help | grep -F -- '--debug          shows debug messages [default: on]'
 bootbox --help | grep -F -- '--quiet          suppresses bootbox status output [default: off]'
 bootbox --quiet --help | grep -F -- '--quiet          suppresses bootbox status output [default: on]'
-TANAAB_QUIET=1 bootbox --help | grep -F -- '--quiet          suppresses bootbox status output [default: on]'
+BOOTBOX_QUIET=1 bootbox --help | grep -F -- '--quiet          suppresses bootbox status output [default: on]'
 bootbox --help | grep -F -- '--force          forces supported overwrite operations [default: off]'
 bootbox --force --help | grep -F -- '--force          forces supported overwrite operations [default: on]'
 
 # should let inline empty brewfile values clear env defaults
-TANAAB_BREWFILE='Brewfile.example' bootbox --brewfile= --help | grep -F -- '--brewfile       installs brewfiles from local paths or URLs [default: none]'
-TANAAB_BREWFILE='Brewfile.example' bootbox --brewfiles= --help | grep -F -- '--brewfile       installs brewfiles from local paths or URLs [default: none]'
+BOOTBOX_BREWFILE='Brewfile.example' bootbox --brewfile= --help | grep -F -- '--brewfile       installs brewfiles from local paths or URLs [default: none]'
+BOOTBOX_BREWFILE='Brewfile.example' bootbox --brewfiles= --help | grep -F -- '--brewfile       installs brewfiles from local paths or URLs [default: none]'
 
 # should let inline empty dotpkg values clear env defaults
-TANAAB_DOTPKG='dotpkgs/git' bootbox --dotpkg= --help | grep -F -- '--dotpkg         stows dot packages into target [default: none]'
-TANAAB_DOTPKG='dotpkgs/git' bootbox --dotpkgs= --help | grep -F -- '--dotpkg         stows dot packages into target [default: none]'
+BOOTBOX_DOTPKG='dotpkgs/git' bootbox --dotpkg= --help | grep -F -- '--dotpkg         stows dot packages into target [default: none]'
+BOOTBOX_DOTPKG='dotpkgs/git' bootbox --dotpkgs= --help | grep -F -- '--dotpkg         stows dot packages into target [default: none]'
 
 # should let inline empty ssh key values clear env defaults
-TANAAB_SSH_KEY='vault/item' bootbox --ssh-key= --help | grep -F -- '--ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] [default: none]'
-TANAAB_SSH_KEY='vault/item' bootbox --ssh-keys= --help | grep -F -- '--ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] [default: none]'
+BOOTBOX_SSH_KEY='vault/item' bootbox --ssh-key= --help | grep -F -- '--ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] [default: none]'
+BOOTBOX_SSH_KEY='vault/item' bootbox --ssh-keys= --help | grep -F -- '--ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] [default: none]'
 
 # should fail cleanly when a separated value is missing
 ! bootbox --brewfile > .tmp/missing-brewfile.log 2>&1

@@ -25,7 +25,7 @@ Bootbox is designed to be run directly from the hosted script at
 - It requires Bash and cURL to start.
 - It supports installing into the default home directory target or a custom `--target`.
 - For 1Password-backed SSH keys, provide a service account token with `--op-token`,
-  `TANAAB_OP_TOKEN`, or `OP_SERVICE_ACCOUNT_TOKEN`.
+  `BOOTBOX_OP_TOKEN`, or `OP_SERVICE_ACCOUNT_TOKEN`.
 - Bootbox currently installs the beta 1Password CLI cask because downstream machine profiles need
   Environment commands such as `op run --environment`. This should return to stable
   `1password-cli` once stable 1Password CLI includes that support.
@@ -40,7 +40,7 @@ local `bootbox` command, the common flows look like this:
 ```sh
 bootbox --brewfile Brewfile.work --target "$HOME"
 bootbox --dotpkg dotpkgs/git --dotpkg dotpkgs/zsh --target "$HOME"
-bootbox --ssh-key "my-vault/id_work" --op-token "$TANAAB_OP_TOKEN"
+bootbox --ssh-key "my-vault/id_work" --op-token "$BOOTBOX_OP_TOKEN"
 ```
 
 If you are working from a local checkout instead, replace `bootbox` with `./bootbox.sh`.
@@ -54,14 +54,14 @@ including multi-Brewfile installs, dotpackage installs, and live 1Password SSH k
 
 Bootbox keeps its configuration surface intentionally small.
 
-- `TANAAB_BREWFILE`: comma-separated Brewfile paths or URLs
-- `TANAAB_DOTPKG`: comma-separated dotpackage paths
-- `TANAAB_SSH_KEY`: comma-separated `vault/item[:filename]` SSH key specs
-- `TANAAB_OP_TOKEN`: 1Password service account token
-- `TANAAB_TARGET`: install target directory
-- `TANAAB_FORCE`: enables supported overwrite behavior
-- `TANAAB_QUIET`: suppresses Bootbox status output for wrapper callers
-- `TANAAB_DEBUG`: enables debug logging
+- `BOOTBOX_BREWFILE`: comma-separated Brewfile paths or URLs
+- `BOOTBOX_DOTPKG`: comma-separated dotpackage paths
+- `BOOTBOX_SSH_KEY`: comma-separated `vault/item[:filename]` SSH key specs
+- `BOOTBOX_OP_TOKEN`: 1Password service account token
+- `BOOTBOX_TARGET`: install target directory
+- `BOOTBOX_FORCE`: enables supported overwrite behavior
+- `BOOTBOX_QUIET`: suppresses Bootbox status output for wrapper callers
+- `BOOTBOX_DEBUG`: enables debug logging
 - `NONINTERACTIVE` and `CI`: disable prompts for automated runs
 
 ## Advanced
@@ -76,16 +76,16 @@ chmod +x "$HOME/.local/bin/bootbox"
 
 bootbox --help
 bootbox --brewfile Brewfile.work --dotpkg dotpkgs/git --target "$HOME"
-bootbox --ssh-key "my-vault/id_work:id_ed25519_work" --op-token "$TANAAB_OP_TOKEN"
+bootbox --ssh-key "my-vault/id_work:id_ed25519_work" --op-token "$BOOTBOX_OP_TOKEN"
 ```
 
 If you do not want to install a local command first, you can also set environment variables inline
 and pipe the hosted script straight into Bash.
 
 ```sh
-curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | TANAAB_BREWFILE="Brewfile.work" TANAAB_TARGET="$HOME" bash
-curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | TANAAB_DOTPKG="dotpkgs/git,dotpkgs/zsh" TANAAB_TARGET="$HOME" bash
-curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | TANAAB_SSH_KEY="my-vault/id_work:id_work" TANAAB_OP_TOKEN="$TANAAB_OP_TOKEN" bash
+curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | BOOTBOX_BREWFILE="Brewfile.work" BOOTBOX_TARGET="$HOME" bash
+curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | BOOTBOX_DOTPKG="dotpkgs/git,dotpkgs/zsh" BOOTBOX_TARGET="$HOME" bash
+curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | BOOTBOX_SSH_KEY="my-vault/id_work:id_work" BOOTBOX_OP_TOKEN="$BOOTBOX_OP_TOKEN" bash
 ```
 
 For the complete and current documented CLI surface, prefer `--help`. That output is the fastest
@@ -116,7 +116,7 @@ bun run build
 
 The example suite is intentionally not exposed as a local package script. Leia examples are run in
 GitHub Actions on fresh macOS runners because they can mutate machine state, install Homebrew
-packages, and access the `TANAAB_OP_TESTVAULT` CI secret for the live SSH-key example.
+packages, and access the `BOOTBOX_OP_TESTVAULT` CI environment value for the live SSH-key example.
 
 ## Issues, Questions and Support
 
