@@ -28,7 +28,7 @@ jobs:
       BOOTBOX_OP_TESTVAULT: ${{ secrets.TANAAB_OP_TESTVAULT }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install Bun
         uses: oven-sh/setup-bun@v2
         with:
