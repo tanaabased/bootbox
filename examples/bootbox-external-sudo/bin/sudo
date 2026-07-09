@@ -1,0 +1,73 @@
+#!/bin/bash
+set -euo pipefail
+
+mark() {
+  local name="$1"
+
+  if [[ -n "${EXAMPLE_SUDO_STATE_DIR:-}" ]]; then
+    mkdir -p "$EXAMPLE_SUDO_STATE_DIR"
+    : > "$EXAMPLE_SUDO_STATE_DIR/$name"
+  fi
+}
+
+case "${EXAMPLE_SUDO_CASE:-valid}" in
+  external-valid)
+    if [[ "${1:-}" == "-n" && "${2:-}" == "-v" ]]; then
+      mark validated
+      exit 0
+    fi
+    if [[ " $* " == *" -k "* ]] || [[ " $* " == *" -K "* ]]; then
+      mark invalidated
+      exit 1
+    fi
+    if [[ "${1:-}" != "-n" ]]; then
+      mark interactive
+      exit 1
+    fi
+    if [[ "$*" == "-n mkdir -p /private/var/root/bootbox-external-valid" ]]; then
+      mark privileged_mkdir
+    fi
+    exit 0
+    ;;
+  external-invalid)
+    if [[ "${1:-}" == "-n" && "${2:-}" == "-v" ]]; then
+      mark validated
+      exit 1
+    fi
+    mark unexpected
+    exit 1
+    ;;
+  unexpected)
+    mark unexpected
+    exit 1
+    ;;
+  standalone-cached)
+    if [[ "${1:-}" == "-n" && "${2:-}" == "-v" ]]; then
+      mark validated
+      exit 0
+    fi
+    exit 0
+    ;;
+  standalone-cold)
+    if [[ "${1:-}" == "-n" && "${2:-}" == "-v" ]]; then
+      mark validation_failed
+      exit 1
+    fi
+    if [[ "${1:-}" == "true" ]]; then
+      mark prompted
+      exit 0
+    fi
+    if [[ "${1:-}" == "-k" ]]; then
+      mark invalidated
+      exit 0
+    fi
+    exit 0
+    ;;
+  valid)
+    exit 0
+    ;;
+  *)
+    printf "unknown fake sudo case: %s\n" "$EXAMPLE_SUDO_CASE" >&2
+    exit 2
+    ;;
+esac

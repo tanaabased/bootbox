@@ -179,6 +179,7 @@ DEBUG="$(env_value BOOTBOX_DEBUG TANAAB_DEBUG "${DEBUG:-${RUNNER_DEBUG:-}}")"
 FORCE="$(env_value BOOTBOX_FORCE TANAAB_FORCE)"
 QUIET="$(env_value BOOTBOX_QUIET TANAAB_QUIET)"
 NO_SUDO="${BOOTBOX_NO_SUDO:-}"
+EXTERNAL_SUDO="${BOOTBOX_EXTERNAL_SUDO:-}"
 CHECK_CORE=""
 TARGET="$(env_value BOOTBOX_TARGET TANAAB_TARGET "$HOME")"
 BREWFILES_CSV="$(env_list_value BOOTBOX_BREWFILE BOOTBOX_BREWFILES TANAAB_BREWFILE TANAAB_BREWFILES)"
@@ -877,6 +878,10 @@ no_sudo_enabled() {
   value_enabled "${NO_SUDO:-}"
 }
 
+external_sudo_enabled() {
+  value_enabled "${EXTERNAL_SUDO:-}"
+}
+
 sudo_enabled() {
   ! no_sudo_enabled
 }
@@ -946,6 +951,7 @@ debug raw BREWFILES="$(array_join "," BREWFILES)"
 debug raw DOTPKGS="$(array_join "," DOTPKGS)"
 debug raw DEBUG="$DEBUG"
 debug raw FORCE="$FORCE"
+debug raw EXTERNAL_SUDO="$EXTERNAL_SUDO"
 debug raw SSH_KEYS="$(array_join "," SSH_KEYS)"
 debug raw OP_TOKEN="$(op_token_for_display)"
 debug raw HOMEBREW_PREFIX="$HOMEBREW_PREFIX"
@@ -1099,6 +1105,17 @@ have_sudo_access() {
     return 1
   fi
 
+  if external_sudo_enabled; then
+    if [[ -z "${HAVE_SUDO_ACCESS-}" ]]; then
+      if sudo_credential_active; then
+        HAVE_SUDO_ACCESS="0"
+      else
+        HAVE_SUDO_ACCESS="1"
+      fi
+    fi
+    return "${HAVE_SUDO_ACCESS}"
+  fi
+
   GROUPS_CMD="$(which groups)"
 
   if [[ ! -x "/usr/bin/sudo" ]]; then
@@ -1136,6 +1153,23 @@ have_sudo_access() {
   fi
 
   return "${HAVE_SUDO_ACCESS}"
+}
+
+sudo_credential_active() {
+  [[ -x "/usr/bin/sudo" ]] && /usr/bin/sudo -n -v >/dev/null 2>&1
+}
+
+validate_external_sudo_credential() {
+  if sudo_credential_active; then
+    HAVE_SUDO_ACCESS="0"
+    return 0
+  fi
+
+  abort_multi "$(cat <<EOABORT
+bootbox external sudo mode requires an active sudo credential.
+the calling process must run \`sudo -v\` and maintain the credential before invoking bootbox.
+EOABORT
+)"
 }
 
 load_homebrew_shellenv() {
@@ -1997,6 +2031,14 @@ plan_brewfiles
 plan_ssh_keys
 plan_dotpkgs
 
+if external_sudo_enabled && no_sudo_enabled; then
+  abort_multi "$(cat <<EOABORT
+BOOTBOX_EXTERNAL_SUDO=1 cannot be combined with ${tty_bold}--no-sudo${tty_reset} or BOOTBOX_NO_SUDO=1.
+choose either caller-managed sudo or no sudo, not both.
+EOABORT
+)"
+fi
+
 if ! have_planned_actions; then
   finish_noop
 fi
@@ -2023,7 +2065,9 @@ EOABORT
 )"
 fi
 
-if needs_sudo && ! have_sudo_access; then
+if needs_sudo && external_sudo_enabled; then
+  validate_external_sudo_credential
+elif needs_sudo && ! have_sudo_access; then
   abort_multi "$(cat <<EOABORT
 ${tty_bold}${USER}${tty_reset} cannot write to ${tty_red}${TARGET}${tty_reset} or the expected Homebrew location ${tty_red}${HOMEBREW_PREFIX}${tty_reset} and is not a ${tty_bold}sudo${tty_reset} user.
 rerun setup with a sudoer or use --target to install into a directory ${tty_bold}${USER}${tty_reset} can write to.
@@ -2074,7 +2118,9 @@ execute() {
 execute_sudo() {
   local -a args=("$@")
   if sudo_enabled && [[ "${EUID:-${UID}}" != "0" ]] && have_sudo_access; then
-    if [[ -n "${SUDO_ASKPASS-}" ]]; then
+    if external_sudo_enabled; then
+      args=("-n" "${args[@]}")
+    elif [[ -n "${SUDO_ASKPASS-}" ]]; then
       args=("-A" "${args[@]}")
     fi
     execute "/usr/bin/sudo" "${args[@]}"
@@ -2104,7 +2150,7 @@ auto_mkdirp() {
   local perm_dir
   perm_dir="$(find_first_existing_parent "$dir")"
 
-  if sudo_enabled && have_sudo_access && [[ ! -w "$perm_dir" ]]; then
+  if sudo_enabled && [[ ! -w "$perm_dir" ]] && have_sudo_access; then
     execute_sudo mkdir -p "$dir"
   else
     execute mkdir -p "$dir"
@@ -2120,7 +2166,7 @@ auto_mv() {
   perm_source="$(find_first_existing_parent "$source")"
   perm_dest="$(find_first_existing_parent "$dest")"
 
-  if sudo_enabled && have_sudo_access && [[ ! -w "$perm_source" ||  ! -w "$perm_dest" ]]; then
+  if sudo_enabled && [[ ! -w "$perm_source" ||  ! -w "$perm_dest" ]] && have_sudo_access; then
     execute_sudo mv -f "$source" "$dest"
   else
     execute mv -f "$source" "$dest"
@@ -2134,7 +2180,7 @@ auto_cp_follow() {
   local perm_dest
   perm_dest="$(find_first_existing_parent "$dest")"
 
-  if sudo_enabled && have_sudo_access && [[ ! -w "$perm_dest" ]]; then
+  if sudo_enabled && [[ ! -w "$perm_dest" ]] && have_sudo_access; then
     execute_sudo cp -RL "$source" "$dest"
   else
     execute cp -RL "$source" "$dest"
@@ -2147,7 +2193,7 @@ auto_rm() {
   local perm_dir
   perm_dir="$(find_first_existing_parent "$path")"
 
-  if sudo_enabled && have_sudo_access && [[ ! -w "$perm_dir" ]]; then
+  if sudo_enabled && [[ ! -w "$perm_dir" ]] && have_sudo_access; then
     execute_sudo rm -f "$path"
   else
     execute rm -f "$path"
@@ -2161,7 +2207,7 @@ auto_chmod() {
   local perm_dir
   perm_dir="$(find_first_existing_parent "$path")"
 
-  if sudo_enabled && have_sudo_access && [[ ! -w "$perm_dir" ]]; then
+  if sudo_enabled && [[ ! -w "$perm_dir" ]] && have_sudo_access; then
     execute_sudo chmod "${mode}" "$path"
   else
     execute chmod "${mode}" "$path"
@@ -2169,7 +2215,7 @@ auto_chmod() {
 }
 
 # Invalidate sudo timestamp before exiting (if it wasn't active before).
-if sudo_enabled && [[ -x /usr/bin/sudo ]] && ! /usr/bin/sudo -n -v 2>/dev/null; then
+if sudo_enabled && ! external_sudo_enabled && [[ -x /usr/bin/sudo ]] && ! sudo_credential_active; then
   trap '/usr/bin/sudo -k' EXIT
 fi
 
@@ -2184,8 +2230,10 @@ if [[ -z "${NONINTERACTIVE-}" ]] && have_planned_actions; then
 fi
 
 # flag for password here if needed
-if sudo_enabled && needs_sudo; then
-  log "please enter ${tty_bold}sudo${tty_reset} password:"
+if sudo_enabled && ! external_sudo_enabled && needs_sudo; then
+  if ! sudo_credential_active; then
+    log "please enter ${tty_bold}sudo${tty_reset} password:"
+  fi
   execute_sudo true
 fi
 
