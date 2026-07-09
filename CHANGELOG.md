@@ -1,5 +1,7 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
+- Added internal `BOOTBOX_EXTERNAL_SUDO` support for caller-managed sudo sessions. ([#9](https://github.com/tanaabased/bootbox/pull/9))
+
 ## v1.0.0-beta.6 - [June 17, 2026](https://github.com/tanaabased/bootbox/releases/tag/v1.0.0-beta.6)
 
 - Added `--no-sudo` and `BOOTBOX_NO_SUDO` for no-elevation bootstrap flows. ([#6](https://github.com/tanaabased/bootbox/pull/6))
