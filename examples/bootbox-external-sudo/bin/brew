@@ -1,0 +1,23 @@
+#!/bin/bash
+set -euo pipefail
+
+prefix="$(cd "$(dirname "$0")/.." && pwd)"
+
+case "${1:-}" in
+  --version)
+    printf "Homebrew 9.9.9\n"
+    ;;
+  --prefix)
+    printf "%s\n" "$prefix"
+    ;;
+  shellenv)
+    printf "export HOMEBREW_PREFIX=%q\n" "$prefix"
+    printf "export PATH=%q:\"\$PATH\"\n" "$prefix/bin"
+    ;;
+  list)
+    exit 0
+    ;;
+  *)
+    exit 0
+    ;;
+esac
