@@ -2,13 +2,13 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://bootbox.tanaab.sh/bootbox.sh</loc>
-    <lastmod>2026-06-17T15:30:24.000Z</lastmod>
+    <lastmod>2026-07-09T23:10:28.000Z</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
     <loc>https://bootbox.tanaab.sh/llms.txt</loc>
-    <lastmod>2026-06-17T15:30:24.000Z</lastmod>
+    <lastmod>2026-07-09T23:10:28.000Z</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.5</priority>
   </url>
