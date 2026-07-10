@@ -1070,7 +1070,7 @@ brew_cask_installed() {
 }
 
 find_first_existing_parent() {
-  dir="$1"
+  local dir="$1"
 
   while [[ ! -d "$dir" ]]; do
     dir=$(dirname "$dir")
@@ -1079,8 +1079,21 @@ find_first_existing_parent() {
   echo "$dir"
 }
 
+directory_is_writable() {
+  [[ -d "$1" ]] && [[ -w "$1" ]] && [[ -x "$1" ]]
+}
+
+path_parent_directory() {
+  find_first_existing_parent "$(dirname "$1")"
+}
+
+path_is_owned_by_current_user() {
+  { [[ -e "$1" ]] || [[ -L "$1" ]]; } \
+    && [[ "$(/usr/bin/stat -f "%u" "$1")" == "$(/usr/bin/id -u)" ]]
+}
+
 validate_temporary_directory() {
-  if [[ ! -d "${BOOTBOX_TMPDIR}" ]] || [[ ! -w "${BOOTBOX_TMPDIR}" ]]; then
+  if ! directory_is_writable "${BOOTBOX_TMPDIR}"; then
     abort "bootbox temporary directory is not writable: ${BOOTBOX_TMPDIR}"
   fi
 }
@@ -1095,7 +1108,31 @@ planned_path_requires_sudo() {
   local perm_dir
 
   perm_dir="$(find_first_existing_parent "${path}")"
-  if [[ -w "${perm_dir}" ]]; then
+  if directory_is_writable "${perm_dir}"; then
+    return 1
+  fi
+
+  plan_sudo_requirement "${reason}"
+}
+
+planned_parent_path_requires_sudo() {
+  local reason="$1"
+  local path="$2"
+  local perm_dir
+
+  perm_dir="$(path_parent_directory "${path}")"
+  if directory_is_writable "${perm_dir}"; then
+    return 1
+  fi
+
+  plan_sudo_requirement "${reason}"
+}
+
+planned_owned_path_requires_sudo() {
+  local reason="$1"
+  local path="$2"
+
+  if path_is_owned_by_current_user "${path}"; then
     return 1
   fi
 
@@ -1126,7 +1163,11 @@ plan_sudo_requirements() {
 
   if [[ -n "${SSH_KEYS_NEED_INSTALL:-}" ]]; then
     ssh_dir="$(ssh_dir_path)"
-    if planned_path_requires_sudo "ssh key destination ${ssh_dir} is not writable" "${ssh_dir}"; then
+    if [[ -d "${ssh_dir}" ]]; then
+      if planned_owned_path_requires_sudo "ssh key destination ${ssh_dir} is not owned by ${USER}" "${ssh_dir}"; then
+        :
+      fi
+    elif planned_path_requires_sudo "ssh key destination ${ssh_dir} cannot be created without elevation" "${ssh_dir}"; then
       :
     fi
   fi
@@ -1141,10 +1182,10 @@ plan_sudo_requirements() {
         source_path="${TARGET}/${conflict_target}"
         backup_path="${DOTPKG_BACKUP_DIR}/${conflict_target}"
 
-        if planned_path_requires_sudo "dotpackage conflict ${source_path} cannot be replaced without elevation" "${source_path}"; then
+        if planned_parent_path_requires_sudo "dotpackage conflict ${source_path} cannot be replaced without elevation" "${source_path}"; then
           :
         fi
-        if planned_path_requires_sudo "dotpackage backup destination ${backup_path} is not writable" "${backup_path}"; then
+        if planned_parent_path_requires_sudo "dotpackage backup destination ${backup_path} is not writable" "${backup_path}"; then
           :
         fi
       done
@@ -1186,57 +1227,38 @@ find_homebrew() {
   find_tool brew
 }
 
-have_sudo_access() {
-  local GROUPS_CMD
-  local -a SUDO=("/usr/bin/sudo")
+user_is_macos_admin() {
+  [[ " $(/usr/bin/id -Gn) " == *" admin "* ]]
+}
 
+have_sudo_access() {
   if no_sudo_enabled; then
     HAVE_SUDO_ACCESS="1"
     return 1
   fi
 
+  if [[ -n "${HAVE_SUDO_ACCESS-}" ]]; then
+    return "${HAVE_SUDO_ACCESS}"
+  fi
+
   if external_sudo_enabled; then
-    if [[ -z "${HAVE_SUDO_ACCESS-}" ]]; then
-      if sudo_credential_active; then
-        HAVE_SUDO_ACCESS="0"
-      else
-        HAVE_SUDO_ACCESS="1"
-      fi
+    if sudo_credential_active; then
+      HAVE_SUDO_ACCESS="0"
+    else
+      HAVE_SUDO_ACCESS="1"
     fi
     return "${HAVE_SUDO_ACCESS}"
   fi
 
-  GROUPS_CMD="$(which groups)"
-
   if [[ ! -x "/usr/bin/sudo" ]]; then
-    return 1
+    HAVE_SUDO_ACCESS="1"
+  elif user_is_macos_admin; then
+    HAVE_SUDO_ACCESS="0"
+  else
+    HAVE_SUDO_ACCESS="1"
   fi
 
-  if [[ -x "$GROUPS_CMD" ]]; then
-    if "$GROUPS_CMD" | grep -q sudo; then
-      HAVE_SUDO_ACCESS="0"
-    fi
-    if "$GROUPS_CMD" | grep -q admin; then
-      HAVE_SUDO_ACCESS="0"
-    fi
-    if "$GROUPS_CMD" | grep -q adm; then
-      HAVE_SUDO_ACCESS="0"
-    fi
-    if "$GROUPS_CMD" | grep -q wheel; then
-      HAVE_SUDO_ACCESS="0"
-    fi
-  fi
-
-  if [[ -n "${SUDO_ASKPASS-}" ]]; then
-    SUDO+=("-A")
-  fi
-
-  if [[ -z "${HAVE_SUDO_ACCESS-}" ]]; then
-    "${SUDO[@]}" -l -U "${USER}" &>/dev/null
-    HAVE_SUDO_ACCESS="$?"
-  fi
-
-  if [[ "${HAVE_SUDO_ACCESS}" == 1 ]]; then
+  if [[ "${HAVE_SUDO_ACCESS}" == "1" ]]; then
     debug "${USER} does not appear to have sudo access!"
   else
     debug "${USER} has sudo access"
@@ -1246,7 +1268,7 @@ have_sudo_access() {
 }
 
 sudo_credential_active() {
-  [[ -x "/usr/bin/sudo" ]] && /usr/bin/sudo -n -v >/dev/null 2>&1
+  [[ -x "/usr/bin/sudo" ]] && /usr/bin/sudo -N -n -v >/dev/null 2>&1
 }
 
 validate_external_sudo_credential() {
@@ -1885,10 +1907,17 @@ stow_dotpkg() {
   dotpkg_parent="$(dirname "${dotpkg}")"
   dotpkg_name="$(basename "${dotpkg}")"
 
-  execute "${STOW}" \
-    --dir "${dotpkg_parent}" \
-    --target "${TARGET}" \
-    "${dotpkg_name}"
+  if sudo_enabled && ! directory_is_writable "${TARGET}" && have_sudo_access; then
+    execute_sudo "${STOW}" \
+      --dir "${dotpkg_parent}" \
+      --target "${TARGET}" \
+      "${dotpkg_name}"
+  else
+    execute "${STOW}" \
+      --dir "${dotpkg_parent}" \
+      --target "${TARGET}" \
+      "${dotpkg_name}"
+  fi
 }
 
 backup_dotpkg_conflicts() {
@@ -2220,9 +2249,14 @@ wait_for_user() {
 auto_mkdirp() {
   local dir="$1"
   local perm_dir
-  perm_dir="$(find_first_existing_parent "$dir")"
 
-  if sudo_enabled && [[ ! -w "$perm_dir" ]] && have_sudo_access; then
+  if [[ -d "${dir}" ]]; then
+    return 0
+  fi
+
+  perm_dir="$(path_parent_directory "$dir")"
+
+  if sudo_enabled && ! directory_is_writable "$perm_dir" && have_sudo_access; then
     execute_sudo mkdir -p "$dir"
   else
     execute mkdir -p "$dir"
@@ -2235,10 +2269,16 @@ auto_mv() {
   local dest="$2"
   local perm_source
   local perm_dest
-  perm_source="$(find_first_existing_parent "$source")"
-  perm_dest="$(find_first_existing_parent "$dest")"
+  perm_source="$(path_parent_directory "$source")"
+  if [[ -d "${dest}" ]]; then
+    perm_dest="${dest}"
+  else
+    perm_dest="$(path_parent_directory "$dest")"
+  fi
 
-  if sudo_enabled && [[ ! -w "$perm_source" ||  ! -w "$perm_dest" ]] && have_sudo_access; then
+  if sudo_enabled \
+    && { ! directory_is_writable "$perm_source" || ! directory_is_writable "$perm_dest"; } \
+    && have_sudo_access; then
     execute_sudo mv -f "$source" "$dest"
   else
     execute mv -f "$source" "$dest"
@@ -2249,10 +2289,21 @@ auto_mv() {
 auto_cp_follow() {
   local source="$1"
   local dest="$2"
-  local perm_dest
-  perm_dest="$(find_first_existing_parent "$dest")"
+  local dest_is_writable=""
 
-  if sudo_enabled && [[ ! -w "$perm_dest" ]] && have_sudo_access; then
+  if [[ -d "${dest}" ]]; then
+    if directory_is_writable "${dest}"; then
+      dest_is_writable="1"
+    fi
+  elif [[ -e "${dest}" ]] || [[ -L "${dest}" ]]; then
+    if [[ -w "${dest}" ]]; then
+      dest_is_writable="1"
+    fi
+  elif directory_is_writable "$(path_parent_directory "$dest")"; then
+    dest_is_writable="1"
+  fi
+
+  if sudo_enabled && [[ -z "${dest_is_writable}" ]] && have_sudo_access; then
     execute_sudo cp -RL "$source" "$dest"
   else
     execute cp -RL "$source" "$dest"
@@ -2263,9 +2314,9 @@ auto_cp_follow() {
 auto_rm() {
   local path="$1"
   local perm_dir
-  perm_dir="$(find_first_existing_parent "$path")"
+  perm_dir="$(path_parent_directory "$path")"
 
-  if sudo_enabled && [[ ! -w "$perm_dir" ]] && have_sudo_access; then
+  if sudo_enabled && ! directory_is_writable "$perm_dir" && have_sudo_access; then
     execute_sudo rm -f "$path"
   else
     execute rm -f "$path"
@@ -2276,19 +2327,22 @@ auto_rm() {
 auto_chmod() {
   local mode="$1"
   local path="$2"
-  local perm_dir
-  perm_dir="$(find_first_existing_parent "$path")"
 
-  if sudo_enabled && [[ ! -w "$perm_dir" ]] && have_sudo_access; then
+  if sudo_enabled && ! path_is_owned_by_current_user "$path" && have_sudo_access; then
     execute_sudo chmod "${mode}" "$path"
   else
     execute chmod "${mode}" "$path"
   fi
 }
 
-# Invalidate sudo timestamp before exiting (if it wasn't active before).
-if sudo_enabled && ! external_sudo_enabled && planned_operations_require_sudo && [[ -x /usr/bin/sudo ]] && ! sudo_credential_active; then
-  trap '/usr/bin/sudo -k' EXIT
+# Inspect standalone sudo state once so bootbox can preserve a pre-existing credential.
+SUDO_CREDENTIAL_ACTIVE_BEFORE_BOOTBOX=""
+if sudo_enabled && ! external_sudo_enabled && planned_operations_require_sudo && [[ -x /usr/bin/sudo ]]; then
+  if sudo_credential_active; then
+    SUDO_CREDENTIAL_ACTIVE_BEFORE_BOOTBOX="1"
+  else
+    trap '/usr/bin/sudo -k' EXIT
+  fi
 fi
 
 # Things can fail later if `pwd` doesn't exist.
@@ -2303,8 +2357,8 @@ fi
 
 # flag for password here if needed
 if sudo_enabled && ! external_sudo_enabled && planned_operations_require_sudo; then
-  if ! sudo_credential_active; then
-    log "please enter ${tty_bold}sudo${tty_reset} password:"
+  if [[ -z "${SUDO_CREDENTIAL_ACTIVE_BEFORE_BOOTBOX}" ]]; then
+    log "${tty_tp}enter${tty_reset} your ${tty_ts}admin password${tty_reset} ${tty_dim}when prompted to continue${tty_reset}."
   fi
   execute_sudo true
 fi

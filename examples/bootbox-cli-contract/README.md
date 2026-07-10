@@ -128,10 +128,3 @@ grep -F 'error: option --target must not be empty.' .tmp/empty-target.log
 grep -F 'error: unrecognized option' .tmp/invalid.log
 grep -F 'Usage:' .tmp/invalid.log
 ```
-
-## Destroy tests
-
-```bash
-# should remove the example scratch directory
-rm -rf .tmp
-```

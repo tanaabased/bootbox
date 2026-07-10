@@ -43,10 +43,3 @@ command -v watch >/dev/null || test -x /opt/homebrew/bin/watch || test -x /usr/l
 # should make the file-url Brewfile formula available
 command -v bats >/dev/null || test -x /opt/homebrew/bin/bats || test -x /usr/local/bin/bats
 ```
-
-## Destroy tests
-
-```bash
-# should remove the example scratch directory
-rm -rf .tmp
-```

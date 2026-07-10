@@ -51,10 +51,3 @@ brew list --cask 1password-cli@beta
 # should expose 1password environment support
 op run --help | grep -F -- '--environment'
 ```
-
-## Destroy tests
-
-```bash
-# should remove the example scratch directory
-rm -rf .tmp
-```

@@ -39,10 +39,3 @@ test "$(cat .tmp/home/.zshrc)" = "$(cat dotpkgs/zsh/.zshrc)"
 # should install the zsh config contents
 grep -F 'BOOTBOX_DOTPKGS_FLAGS=1' .tmp/home/.zshrc
 ```
-
-## Destroy tests
-
-```bash
-# should remove the example scratch directory
-rm -rf .tmp
-```

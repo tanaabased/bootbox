@@ -45,10 +45,3 @@ command -v tree >/dev/null || test -x /opt/homebrew/bin/tree || test -x /usr/loc
 # should make the file-url Brewfile formula available
 command -v pv >/dev/null || test -x /opt/homebrew/bin/pv || test -x /usr/local/bin/pv
 ```
-
-## Destroy tests
-
-```bash
-# should remove the example scratch directory
-rm -rf .tmp
-```

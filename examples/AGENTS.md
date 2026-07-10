@@ -18,9 +18,11 @@ specs consumed in CI.
 
 ## Fixtures
 
-- Keep fixtures beside the scenario README so each example stays self-contained.
-- Prefer committed example-local fixture binaries or files over generating long fixtures with
-  heredocs inside the README.
+- Keep real input fixtures beside the scenario README so each example stays self-contained.
+- Prefer the prepared `bootbox` entrypoint and real runner tools, users, permissions, and machine
+  mutations over fixture binaries that emulate runtime dependencies.
+- When simulation is unavoidable, prefer a committed example-local helper over generating a long
+  fixture with a heredoc inside the README.
 - Hide repeated fixture environment and argument setup behind committed example-local helper scripts
   when it makes README commands clearer.
 - Use `.tmp/` for scenario scratch data, logs, patched script copies, and helper internals.
@@ -28,11 +30,14 @@ specs consumed in CI.
 
 ## Scenario Shape
 
-- Use `## Setup`, `## Testing`, and `## Destroy tests`.
+- Use `## Setup` and `## Testing`.
 - Keep `Setup` focused on minimal prerequisites for the scenario.
 - Put commands immediately below each `# should ...` line with no blank lines inside the test body.
 - Separate one `# should ...` test from the next with a blank line.
-- Always include cleanup in `Destroy tests`, and remove only artifacts created by that scenario.
+- Do not add destroy or cleanup sections for runner-local state. Each example runs in its own fresh
+  GitHub-hosted macOS job, and the VM is discarded after the job.
+- If examples ever run on persistent infrastructure or mutate shared external state, change the
+  execution policy centrally before adding targeted cleanup back to individual scenarios.
 
 ## Local Validation
 

@@ -37,10 +37,3 @@ test "$(cat .tmp/home/.vimrc)" = "$(cat dotpkgs/vim/.vimrc)"
 # should install the vim config contents
 grep -F 'BOOTBOX_DOTPKGS_ENV=1' .tmp/home/.vimrc
 ```
-
-## Destroy tests
-
-```bash
-# should remove the example scratch directory
-rm -rf .tmp
-```

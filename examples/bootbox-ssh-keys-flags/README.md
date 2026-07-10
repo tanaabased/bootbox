@@ -49,10 +49,3 @@ test "$(ssh-keygen -y -f .tmp/home/.ssh/id_test | awk '{print $1 \" \" $2}')" = 
 # should install the overridden ssh key material that matches the expected public key
 test "$(ssh-keygen -y -f .tmp/home/.ssh/id_test_bootbox | awk '{print $1 \" \" $2}')" = "$(awk '{print $1 \" \" $2}' id_test.pub)"
 ```
-
-## Destroy tests
-
-```bash
-# should remove the example scratch directory
-rm -rf .tmp
-```

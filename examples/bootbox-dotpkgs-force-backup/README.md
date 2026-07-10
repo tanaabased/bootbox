@@ -44,10 +44,3 @@ backup_file="$(find .tmp/home/.tanaab-backups -name '.gitconfig' | head -n 1)" &
 # should log that conflicting files were backed up
 grep -F 'backed up' .tmp/setup.log
 ```
-
-## Destroy tests
-
-```bash
-# should remove the example scratch directory
-rm -rf .tmp
-```

@@ -57,10 +57,3 @@ TANAAB_DEBUG=1 TANAAB_ARCH=arm64 TANAAB_OS=macos bootbox --check-core > .tmp/pla
 grep -F 'raw ARCH=arm64' .tmp/platform-legacy.stderr
 grep -F 'raw OS=macos' .tmp/platform-legacy.stderr
 ```
-
-## Destroy tests
-
-```bash
-# should remove the example scratch directory
-rm -rf .tmp
-```
