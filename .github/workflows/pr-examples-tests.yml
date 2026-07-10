@@ -47,12 +47,14 @@ jobs:
       - name: Create bootbox alias for Leia examples
         shell: bash
         run: ln -sf bootbox.sh dist/bootbox
-      - name: Put prepared bootbox on PATH
+      - name: Put prepared tools on PATH
         shell: bash
-        run: echo "$PWD/dist" >> "$GITHUB_PATH"
+        run: |
+          echo "$PWD/dist" >> "$GITHUB_PATH"
+          echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
       - name: Run Leia-backed example
         shell: bash
         run: |
-          PATH="/home/linuxbrew/.linuxbrew/bin:$PATH" brew update
+          brew update
           mkdir -p examples/.tmp
           TMPDIR="$PWD/examples/.tmp" ./node_modules/.bin/leia "examples/${{ matrix.example }}/README.md" --stdin --retry 0
