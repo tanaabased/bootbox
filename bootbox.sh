@@ -1,11 +1,11 @@
 #!/bin/bash
 set -euo pipefail
-# bootstrap a macOS machine using homebrew, brewfiles, dotfiles, and identity data.
+# bootstrap a macOS or Linux machine using homebrew, brewfiles, dotfiles, and identity data.
 #
 # examples:
 #
 #   $ ./bootbox.sh
-#   $ ./bootbox.sh --brewfile Brewfile.work --target ~/workstation
+#   $ ./bootbox.sh --brewfile Brewfile.work
 #   $ DEBUG=1 ./bootbox.sh --yes
 #
 # option precedence: cli options override environment variables, which override defaults.
@@ -181,7 +181,7 @@ QUIET="$(env_value BOOTBOX_QUIET TANAAB_QUIET)"
 NO_SUDO="${BOOTBOX_NO_SUDO:-}"
 EXTERNAL_SUDO="${BOOTBOX_EXTERNAL_SUDO:-}"
 CHECK_CORE=""
-TARGET="$(env_value BOOTBOX_TARGET TANAAB_TARGET "$HOME")"
+TARGET="${HOME:-}"
 BREWFILES_CSV="$(env_list_value BOOTBOX_BREWFILE BOOTBOX_BREWFILES TANAAB_BREWFILE TANAAB_BREWFILES)"
 DOTPKGS_CSV="$(env_list_value BOOTBOX_DOTPKG BOOTBOX_DOTPKGS TANAAB_DOTPKG TANAAB_DOTPKGS)"
 OP_TOKEN="$(env_value BOOTBOX_OP_TOKEN TANAAB_OP_TOKEN "${OP_SERVICE_ACCOUNT_TOKEN:-}")"
@@ -365,10 +365,9 @@ Usage: ${tty_dim}[NONINTERACTIVE=1] [CI=1] [BOOTBOX_*...]${tty_reset} ${tty_bold
 
 ${tty_tp}Options:${tty_reset}
   --brewfile       installs brewfiles from local paths or URLs ${tty_dim}[default: ${brewfiles_display}]${tty_reset}
-  --dotpkg         stows dot packages into target ${tty_dim}[default: ${dotpkgs_display}]${tty_reset}
-  --ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] ${tty_dim}[default: ${ssh_keys_display}]${tty_reset}
+  --dotpkg         stows dot packages into the current user's home ${tty_dim}[default: ${dotpkgs_display}]${tty_reset}
+  --ssh-key        installs 1password ssh keys into the current user's .ssh as vault/item[:filename] ${tty_dim}[default: ${ssh_keys_display}]${tty_reset}
   --op-token       auths with 1password service account token ${tty_dim}[default: $(op_token_for_display)]${tty_reset}
-  --target         installs dotpkgs and identities relative to here ${tty_dim}[default: ${TARGET}]${tty_reset}
   --version        shows version of this script
   --debug          shows debug messages ${tty_dim}[default: ${debug_display}]${tty_reset}
   --quiet          suppresses bootbox status output ${tty_dim}[default: ${quiet_display}]${tty_reset}
@@ -382,7 +381,6 @@ ${tty_tp}Environment Variables:${tty_reset}
   BOOTBOX_DOTPKG   same as --dotpkg
   BOOTBOX_SSH_KEY  same as --ssh-key
   BOOTBOX_OP_TOKEN same as --op-token; falls back to OP_SERVICE_ACCOUNT_TOKEN
-  BOOTBOX_TARGET   same as --target
   BOOTBOX_FORCE    same as --force
   BOOTBOX_QUIET    same as --quiet
   BOOTBOX_NO_SUDO  same as --no-sudo
@@ -411,15 +409,6 @@ require_next_option_value() {
 
   if [[ "${argc}" -lt 2 ]]; then
     abort_option_usage "option ${tty_bold}${option}${tty_reset} requires a value."
-  fi
-}
-
-require_inline_option_value() {
-  local option="$1"
-  local value="$2"
-
-  if [[ -z "${value}" ]]; then
-    abort_option_usage "option ${tty_bold}${option}${tty_reset} must not be empty."
   fi
 }
 
@@ -507,18 +496,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --check-core)
       CHECK_CORE="1"
-      shift
-      ;;
-
-    --target)
-      require_next_option_value "--target" "$#"
-      require_inline_option_value "--target" "$2"
-      TARGET="$2"
-      shift 2
-      ;;
-    --target=*)
-      require_inline_option_value "--target" "${1#*=}"
-      TARGET="${1#*=}"
       shift
       ;;
 
@@ -768,7 +745,12 @@ validate_ssh_keys() {
   done
 }
 
-TARGET="$(normalize_local_path "${TARGET}")"
+if [[ -z "${TARGET}" ]] && [[ "${CHECK_CORE:-0}" != "1" ]]; then
+  abort "HOME must be set before bootbox can configure the current user."
+fi
+if [[ -n "${TARGET}" ]]; then
+  TARGET="$(normalize_local_path "${TARGET}")"
+fi
 normalize_brewfiles
 validate_brewfiles
 normalize_dotpkgs
@@ -809,9 +791,12 @@ detect_os() {
 }
 
 default_homebrew_prefix() {
-  local arch="$1"
+  local os="$1"
+  local arch="$2"
 
-  if [[ "${arch}" == "arm64" ]]; then
+  if [[ "${os}" == "linux" ]]; then
+    echo "/home/linuxbrew/.linuxbrew"
+  elif [[ "${arch}" == "arm64" ]]; then
     echo "/opt/homebrew"
   else
     echo "/usr/local"
@@ -839,7 +824,7 @@ detect_os
 
 ARCH="$(env_value BOOTBOX_ARCH TANAAB_ARCH "$DETECTED_ARCH")"
 OS="$(env_value BOOTBOX_OS TANAAB_OS "$DETECTED_OS")"
-HOMEBREW_PREFIX="${HOMEBREW_PREFIX:-"$(default_homebrew_prefix "$ARCH")"}"
+HOMEBREW_PREFIX="${HOMEBREW_PREFIX:-"$(default_homebrew_prefix "$OS" "$ARCH")"}"
 HOMEBREW_INSTALLER_URL="https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
 BOOTBOX_TMPDIR=$(get_abs_dir "$BOOTBOX_TMPFILE")
 
@@ -972,6 +957,8 @@ unset HAVE_SUDO_ACCESS
 unset BREW
 unset OP_CLI
 unset BREW_NEEDS_INSTALL
+unset HOMEBREW_ACCESS_INVALID
+unset HOMEBREW_ACCESS_ERROR_PATH
 unset BREWFILES_NEED_INSTALL
 unset SSH_KEYS_NEED_INSTALL
 unset DOTPKGS_NEED_STOW
@@ -1082,7 +1069,7 @@ find_first_existing_parent() {
 }
 
 directory_is_writable() {
-  [[ -d "$1" ]] && [[ -w "$1" ]] && [[ -x "$1" ]]
+  [[ -d "$1" ]] && [[ -r "$1" ]] && [[ -w "$1" ]] && [[ -x "$1" ]]
 }
 
 path_parent_directory() {
@@ -1091,7 +1078,7 @@ path_parent_directory() {
 
 path_is_owned_by_current_user() {
   { [[ -e "$1" ]] || [[ -L "$1" ]]; } \
-    && [[ "$(/usr/bin/stat -f "%u" "$1")" == "$(/usr/bin/id -u)" ]]
+    && [[ -O "$1" ]]
 }
 
 validate_temporary_directory() {
@@ -1100,45 +1087,22 @@ validate_temporary_directory() {
   fi
 }
 
+validate_user_home() {
+  if [[ ! -d "${TARGET}" ]]; then
+    abort "current user home directory does not exist: ${TARGET}."
+  fi
+
+  if ! path_is_owned_by_current_user "${TARGET}"; then
+    abort "current user home directory is not owned by ${USER}: ${TARGET}."
+  fi
+
+  if ! directory_is_writable "${TARGET}"; then
+    abort "current user home directory is not readable, writable, and traversable: ${TARGET}."
+  fi
+}
+
 plan_sudo_requirement() {
   append_unique_array_value PLANNED_SUDO_REASONS "$1"
-}
-
-planned_path_requires_sudo() {
-  local reason="$1"
-  local path="$2"
-  local perm_dir
-
-  perm_dir="$(find_first_existing_parent "${path}")"
-  if directory_is_writable "${perm_dir}"; then
-    return 1
-  fi
-
-  plan_sudo_requirement "${reason}"
-}
-
-planned_parent_path_requires_sudo() {
-  local reason="$1"
-  local path="$2"
-  local perm_dir
-
-  perm_dir="$(path_parent_directory "${path}")"
-  if directory_is_writable "${perm_dir}"; then
-    return 1
-  fi
-
-  plan_sudo_requirement "${reason}"
-}
-
-planned_owned_path_requires_sudo() {
-  local reason="$1"
-  local path="$2"
-
-  if path_is_owned_by_current_user "${path}"; then
-    return 1
-  fi
-
-  plan_sudo_requirement "${reason}"
 }
 
 planned_operations_require_sudo() {
@@ -1150,48 +1114,12 @@ planned_sudo_reasons() {
 }
 
 plan_sudo_requirements() {
-  local backup_path
-  local conflict_target
-  local source_path
-  local ssh_dir
-  local target_requires_sudo=""
   local reason
 
   PLANNED_SUDO_REASONS=()
 
   if [[ "${BREW_NEEDS_INSTALL:-0}" == "1" ]]; then
     plan_sudo_requirement "Homebrew installation may require elevation"
-  fi
-
-  if [[ -n "${SSH_KEYS_NEED_INSTALL:-}" ]]; then
-    ssh_dir="$(ssh_dir_path)"
-    if [[ -d "${ssh_dir}" ]]; then
-      if planned_owned_path_requires_sudo "ssh key destination ${ssh_dir} is not owned by ${USER}" "${ssh_dir}"; then
-        :
-      fi
-    elif planned_path_requires_sudo "ssh key destination ${ssh_dir} cannot be created without elevation" "${ssh_dir}"; then
-      :
-    fi
-  fi
-
-  if [[ -n "${DOTPKGS_NEED_STOW:-}" ]]; then
-    if planned_path_requires_sudo "dotpackage destination ${TARGET} is not writable" "${TARGET}"; then
-      target_requires_sudo="1"
-    fi
-
-    if [[ -z "${target_requires_sudo}" ]] && [[ "${#DOTPKG_CONFLICT_TARGETS[@]}" -gt 0 ]]; then
-      for conflict_target in "${DOTPKG_CONFLICT_TARGETS[@]}"; do
-        source_path="${TARGET}/${conflict_target}"
-        backup_path="${DOTPKG_BACKUP_DIR}/${conflict_target}"
-
-        if planned_parent_path_requires_sudo "dotpackage conflict ${source_path} cannot be replaced without elevation" "${source_path}"; then
-          :
-        fi
-        if planned_parent_path_requires_sudo "dotpackage backup destination ${backup_path} is not writable" "${backup_path}"; then
-          :
-        fi
-      done
-    fi
   fi
 
   if planned_operations_require_sudo; then
@@ -1217,7 +1145,11 @@ find_homebrew() {
     candidates+=("${HOMEBREW_PREFIX}/bin/brew")
   fi
 
-  candidates+=("/opt/homebrew/bin/brew" "/usr/local/bin/brew")
+  if [[ "${OS}" == "linux" ]]; then
+    candidates+=("/home/linuxbrew/.linuxbrew/bin/brew")
+  else
+    candidates+=("/opt/homebrew/bin/brew" "/usr/local/bin/brew")
+  fi
 
   for candidate in "${candidates[@]}"; do
     if test_brew "${candidate}"; then
@@ -1231,6 +1163,21 @@ find_homebrew() {
 
 user_is_macos_admin() {
   [[ " $(/usr/bin/id -Gn) " == *" admin "* ]]
+}
+
+user_is_linux_sudoer() {
+  local groups
+
+  groups=" $(/usr/bin/id -Gn) "
+  [[ "${groups}" == *" sudo "* ]] || [[ "${groups}" == *" wheel "* ]]
+}
+
+user_appears_sudo_capable() {
+  if [[ "${OS}" == "macos" ]]; then
+    user_is_macos_admin
+  else
+    user_is_linux_sudoer
+  fi
 }
 
 have_sudo_access() {
@@ -1254,7 +1201,7 @@ have_sudo_access() {
 
   if [[ ! -x "/usr/bin/sudo" ]]; then
     HAVE_SUDO_ACCESS="1"
-  elif user_is_macos_admin; then
+  elif sudo_credential_active || user_appears_sudo_capable; then
     HAVE_SUDO_ACCESS="0"
   else
     HAVE_SUDO_ACCESS="1"
@@ -1289,10 +1236,72 @@ EOABORT
 
 load_homebrew_shellenv() {
   local brew="$1"
+  local prefix
+  local shellenv
 
-  eval "$("${brew}" shellenv)"
-  HOMEBREW_PREFIX="$("${brew}" --prefix)"
+  shellenv="$("${brew}" shellenv 2>/dev/null)" || return 1
+  prefix="$("${brew}" --prefix 2>/dev/null)" || return 1
+  eval "${shellenv}"
+  HOMEBREW_PREFIX="${prefix}"
   BREW="${brew}"
+}
+
+homebrew_access_ok() {
+  local brew="$1"
+  local cellar
+  local path
+  local prefix
+  local repository
+  local -a managed_paths=()
+
+  HOMEBREW_ACCESS_ERROR_PATH=""
+  prefix="$("${brew}" --prefix 2>/dev/null)" || return 1
+  repository="$("${brew}" --repository 2>/dev/null)" || return 1
+  cellar="$("${brew}" --cellar 2>/dev/null)" || return 1
+  HOMEBREW_PREFIX="${prefix}"
+
+  managed_paths=(
+    "${repository}"
+    "${cellar}"
+    "${prefix}/bin"
+    "${prefix}/etc"
+    "${prefix}/include"
+    "${prefix}/lib"
+    "${prefix}/opt"
+    "${prefix}/sbin"
+    "${prefix}/share"
+    "${prefix}/var"
+    "${prefix}/Caskroom"
+    "${prefix}/Frameworks"
+  )
+
+  for path in "${managed_paths[@]}"; do
+    if ! directory_is_writable "${path}"; then
+      HOMEBREW_ACCESS_ERROR_PATH="${path}"
+      return 1
+    fi
+  done
+
+  return 0
+}
+
+abort_unmanageable_homebrew() {
+  abort_multi "$(cat <<EOABORT
+Homebrew at ${HOMEBREW_PREFIX} cannot be managed by ${USER}.
+required Homebrew path is not readable, writable, and traversable: ${HOMEBREW_ACCESS_ERROR_PATH:-${HOMEBREW_PREFIX}}.
+bootbox will not use sudo to repair an existing Homebrew installation.
+run bootbox as the Homebrew-managing user or prepare trusted group access first; see the advanced guidance in the project README.
+EOABORT
+)"
+}
+
+abort_unloadable_homebrew() {
+  abort_multi "$(cat <<EOABORT
+Homebrew at ${BREW} could not load its shell environment.
+repair the existing Homebrew installation or run bootbox as its managing user.
+bootbox will not use sudo to repair an existing Homebrew installation.
+EOABORT
+)"
 }
 
 queue_core_brew_package() {
@@ -1316,7 +1325,20 @@ plan_homebrew() {
   BREW="$(find_homebrew || true)"
 
   if [[ -n "${BREW}" ]]; then
-    load_homebrew_shellenv "${BREW}"
+    if ! homebrew_access_ok "${BREW}"; then
+      if check_core_mode; then
+        HOMEBREW_ACCESS_INVALID="1"
+        return 0
+      fi
+      abort_unmanageable_homebrew
+    fi
+    if ! load_homebrew_shellenv "${BREW}"; then
+      if check_core_mode; then
+        HOMEBREW_ACCESS_INVALID="1"
+        return 0
+      fi
+      abort_unloadable_homebrew
+    fi
     debug "using Homebrew at ${BREW}"
     return 0
   fi
@@ -1350,7 +1372,12 @@ install_homebrew() {
     abort "homebrew install finished but brew could not be found afterwards."
   fi
 
-  load_homebrew_shellenv "${BREW}"
+  if ! homebrew_access_ok "${BREW}"; then
+    abort_unmanageable_homebrew
+  fi
+  if ! load_homebrew_shellenv "${BREW}"; then
+    abort_unloadable_homebrew
+  fi
   log "${tty_bold}installed${tty_reset} ${tty_green}homebrew${tty_reset}"
   debug "using Homebrew at ${BREW}"
 }
@@ -1389,6 +1416,12 @@ plan_core_homebrew_packages() {
 run_check_core() {
   debug "running hidden --check-core mode"
   plan_homebrew
+
+  if [[ "${HOMEBREW_ACCESS_INVALID:-0}" == "1" ]]; then
+    debug "check-core result: Homebrew is not manageable by ${USER}"
+    exit 1
+  fi
+
   plan_core_homebrew_packages
 
   if [[ "${BREW_NEEDS_INSTALL:-0}" == "1" ]]; then
@@ -1599,6 +1632,10 @@ EOABORT
 
   if [[ -e "${ssh_dir}" ]] && [[ ! -d "${ssh_dir}" ]]; then
     abort "ssh key installation target exists but is not a directory: ${ssh_dir}"
+  fi
+
+  if [[ -d "${ssh_dir}" ]] && ! path_is_owned_by_current_user "${ssh_dir}"; then
+    abort "ssh key installation target is not owned by ${USER}: ${ssh_dir}"
   fi
 }
 
@@ -1909,17 +1946,22 @@ stow_dotpkg() {
   dotpkg_parent="$(dirname "${dotpkg}")"
   dotpkg_name="$(basename "${dotpkg}")"
 
-  if sudo_enabled && ! directory_is_writable "${TARGET}" && have_sudo_access; then
-    execute_sudo "${STOW}" \
-      --dir "${dotpkg_parent}" \
-      --target "${TARGET}" \
-      "${dotpkg_name}"
-  else
-    execute "${STOW}" \
-      --dir "${dotpkg_parent}" \
-      --target "${TARGET}" \
-      "${dotpkg_name}"
-  fi
+  execute "${STOW}" \
+    --dir "${dotpkg_parent}" \
+    --target "${TARGET}" \
+    "${dotpkg_name}"
+}
+
+validate_dotpkg_conflict_access() {
+  local conflict_target
+  local source_path
+
+  for conflict_target in "${DOTPKG_CONFLICT_TARGETS[@]}"; do
+    source_path="${TARGET}/${conflict_target}"
+    if ! directory_is_writable "$(path_parent_directory "${source_path}")"; then
+      abort "dotpackage conflict cannot be replaced by ${USER}: ${source_path}"
+    fi
+  done
 }
 
 backup_dotpkg_conflicts() {
@@ -1981,6 +2023,7 @@ plan_dotpkgs() {
 
   if [[ "${#DOTPKG_CONFLICT_TARGETS[@]}" -gt 0 ]]; then
     DOTPKG_BACKUP_DIR="${TARGET}/.tanaab-backups/stow-$(timestamp_now)"
+    validate_dotpkg_conflict_access
     plan_action "${tty_tp}backup${tty_reset} conflicting dotfiles to ${tty_ts}${DOTPKG_BACKUP_DIR}${tty_reset}"
   fi
 
@@ -2129,13 +2172,6 @@ EOABORT
   fi
 fi
 
-validate_temporary_directory
-plan_homebrew
-plan_core_homebrew_packages
-plan_brewfiles
-plan_ssh_keys
-plan_dotpkgs
-
 if external_sudo_enabled && no_sudo_enabled; then
   abort_multi "$(cat <<EOABORT
 BOOTBOX_EXTERNAL_SUDO=1 cannot be combined with ${tty_bold}--no-sudo${tty_reset} or BOOTBOX_NO_SUDO=1.
@@ -2143,6 +2179,14 @@ choose either caller-managed sudo or no sudo, not both.
 EOABORT
 )"
 fi
+
+validate_temporary_directory
+validate_user_home
+plan_homebrew
+plan_core_homebrew_packages
+plan_brewfiles
+plan_ssh_keys
+plan_dotpkgs
 
 if ! have_planned_actions; then
   finish_noop
@@ -2159,21 +2203,12 @@ EOABORT
 )"
 fi
 
-if planned_operations_require_sudo && no_sudo_enabled; then
-  abort_multi "$(cat <<EOABORT
-bootbox is running with ${tty_bold}--no-sudo${tty_reset}, but the planned operation requires elevation: $(planned_sudo_reasons).
-prepare the responsible destination in the wrapper or machine-prep layer, or use --target to install into a directory ${tty_bold}${USER}${tty_reset} can write to.
-for more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
-EOABORT
-)"
-fi
-
 if planned_operations_require_sudo && external_sudo_enabled; then
   validate_external_sudo_credential
 elif planned_operations_require_sudo && ! have_sudo_access; then
   abort_multi "$(cat <<EOABORT
 ${tty_bold}${USER}${tty_reset} cannot complete the planned operation without ${tty_bold}sudo${tty_reset}: $(planned_sudo_reasons).
-rerun setup with a sudoer, prepare the responsible destination first, or use --target to install into a directory ${tty_bold}${USER}${tty_reset} can write to.
+rerun setup as an administrator or sudo-capable user, or install Homebrew from a privileged machine-prep layer first.
 for more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
@@ -2267,79 +2302,35 @@ wait_for_user() {
 # shellcheck disable=SC2329
 auto_mkdirp() {
   local dir="$1"
-  local perm_dir
 
   if [[ -d "${dir}" ]]; then
     return 0
   fi
 
-  perm_dir="$(path_parent_directory "$dir")"
-
-  if sudo_enabled && ! directory_is_writable "$perm_dir" && have_sudo_access; then
-    execute_sudo mkdir -p "$dir"
-  else
-    execute mkdir -p "$dir"
-  fi
+  execute mkdir -p "$dir"
 }
 
 # shellcheck disable=SC2329
 auto_mv() {
   local source="$1"
   local dest="$2"
-  local perm_source
-  local perm_dest
-  perm_source="$(path_parent_directory "$source")"
-  if [[ -d "${dest}" ]]; then
-    perm_dest="${dest}"
-  else
-    perm_dest="$(path_parent_directory "$dest")"
-  fi
 
-  if sudo_enabled \
-    && { ! directory_is_writable "$perm_source" || ! directory_is_writable "$perm_dest"; } \
-    && have_sudo_access; then
-    execute_sudo mv -f "$source" "$dest"
-  else
-    execute mv -f "$source" "$dest"
-  fi
+  execute mv -f "$source" "$dest"
 }
 
 # shellcheck disable=SC2329
 auto_cp_follow() {
   local source="$1"
   local dest="$2"
-  local dest_is_writable=""
 
-  if [[ -d "${dest}" ]]; then
-    if directory_is_writable "${dest}"; then
-      dest_is_writable="1"
-    fi
-  elif [[ -e "${dest}" ]] || [[ -L "${dest}" ]]; then
-    if [[ -w "${dest}" ]]; then
-      dest_is_writable="1"
-    fi
-  elif directory_is_writable "$(path_parent_directory "$dest")"; then
-    dest_is_writable="1"
-  fi
-
-  if sudo_enabled && [[ -z "${dest_is_writable}" ]] && have_sudo_access; then
-    execute_sudo cp -RL "$source" "$dest"
-  else
-    execute cp -RL "$source" "$dest"
-  fi
+  execute cp -RL "$source" "$dest"
 }
 
 # shellcheck disable=SC2329
 auto_rm() {
   local path="$1"
-  local perm_dir
-  perm_dir="$(path_parent_directory "$path")"
 
-  if sudo_enabled && ! directory_is_writable "$perm_dir" && have_sudo_access; then
-    execute_sudo rm -f "$path"
-  else
-    execute rm -f "$path"
-  fi
+  execute rm -f "$path"
 }
 
 # shellcheck disable=SC2329
@@ -2347,11 +2338,7 @@ auto_chmod() {
   local mode="$1"
   local path="$2"
 
-  if sudo_enabled && ! path_is_owned_by_current_user "$path" && have_sudo_access; then
-    execute_sudo chmod "${mode}" "$path"
-  else
-    execute chmod "${mode}" "$path"
-  fi
+  execute chmod "${mode}" "$path"
 }
 
 # Inspect standalone sudo state once so bootbox can preserve a pre-existing credential.
