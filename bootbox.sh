@@ -40,16 +40,16 @@ if [ -z "${BASH_VERSION:-}" ]; then
   abort "bash is required to interpret this script."
 fi
 
-# Check if script is run with force-interactive mode in CI
-if [[ -n "${CI-}" && -n "${INTERACTIVE-}" ]]; then
-  abort "cannot run force-interactive mode in CI."
-fi
-
 # Check if both `INTERACTIVE` and `NONINTERACTIVE` are set
 # Always use single-quoted strings with `exp` expressions
 # shellcheck disable=SC2016
 if [[ -n "${INTERACTIVE-}" && -n "${NONINTERACTIVE-}" ]]; then
   abort 'both $INTERACTIVE and $NONINTERACTIVE are set. please unset at least one variable and try again.'
+fi
+
+# Check if script is run with force-interactive mode in CI
+if [[ -n "${CI-}" && -n "${INTERACTIVE-}" ]]; then
+  abort "cannot run force-interactive mode in CI."
 fi
 
 # Check if script is run in POSIX mode
