@@ -1,14 +1,14 @@
 # Inputs Example
 
 This example keeps lightweight coverage on the public `bootbox` interface. It validates help,
-version, hidden probes, option precedence display, token masking, and clean argument failures without
-running the full bootstrap path.
+version, hidden probes, input precedence, token masking, and clean argument failures without running
+the full bootstrap path.
 
 ## Setup
 
 ```bash
-# should reset the example scratch directory
-rm -rf .tmp && mkdir -p .tmp
+# should prepare the inputs scratch fixtures
+rm -rf .tmp && mkdir -p .tmp/implicit && touch .tmp/implicit/Brewfile
 
 # should have prepared bootbox on PATH
 command -v bootbox >/dev/null
@@ -79,36 +79,92 @@ bootbox --quiet --debug --check-core > .tmp/check-core-quiet.stdout 2> .tmp/chec
 test ! -s .tmp/check-core-quiet.stdout
 grep -F 'running hidden --check-core mode' .tmp/check-core-quiet.stderr
 
-# should mask token defaults in help
-BOOTBOX_OP_TOKEN='secret-example-value' bootbox --help | grep -F 'secr...alue'
-if BOOTBOX_OP_TOKEN='secret-example-value' bootbox --help | grep -F 'secret-example-value'; then exit 1; fi
+# should use no Brewfiles when neither an implicit default nor an environment input exists
+bootbox --help | grep -F -- '--brewfile       installs brewfiles from local paths or URLs [default: none]'
 
-# should allow an inline empty op token to mean no token
-BOOTBOX_OP_TOKEN='secret-example-value' bootbox --op-token= --help | grep -F -- '--op-token       auths with 1password service account token [default: none]'
+# should discover an implicit Brewfile from the working directory
+(cd .tmp/implicit && bootbox --help) | grep -F -- '--brewfile       installs brewfiles from local paths or URLs [default: ./Brewfile]'
 
-# should show debug, quiet, no-sudo, and force defaults
+# should let the public environment input override the implicit Brewfile
+(cd .tmp/implicit && BOOTBOX_BREWFILE='Brewfile.env-one,Brewfile.env-two' bootbox --help) | grep -F -- '--brewfile       installs brewfiles from local paths or URLs [default: Brewfile.env-one,Brewfile.env-two]'
+
+# should let repeated Brewfile options replace environment inputs
+BOOTBOX_BREWFILE='Brewfile.env' bootbox --brewfile 'Brewfile.cli-one' --brewfile='Brewfile.cli-two' --help | grep -F -- '--brewfile       installs brewfiles from local paths or URLs [default: Brewfile.cli-one,Brewfile.cli-two]'
+
+# should let inline empty Brewfile options clear environment inputs
+BOOTBOX_BREWFILE='Brewfile.env' bootbox --brewfile= --help | grep -F -- '--brewfile       installs brewfiles from local paths or URLs [default: none]'
+BOOTBOX_BREWFILE='Brewfile.env' bootbox --brewfiles= --help | grep -F -- '--brewfile       installs brewfiles from local paths or URLs [default: none]'
+
+# should use no dotpackages by default
+bootbox --help | grep -F -- '--dotpkg         stows dot packages into target [default: none]'
+
+# should use dotpackages from the public environment input
+BOOTBOX_DOTPKG='dotpkgs/env-one,dotpkgs/env-two' bootbox --help | grep -F -- '--dotpkg         stows dot packages into target [default: dotpkgs/env-one,dotpkgs/env-two]'
+
+# should let repeated dotpackage options replace environment inputs
+BOOTBOX_DOTPKG='dotpkgs/env' bootbox --dotpkg 'dotpkgs/cli-one' --dotpkg='dotpkgs/cli-two' --help | grep -F -- '--dotpkg         stows dot packages into target [default: dotpkgs/cli-one,dotpkgs/cli-two]'
+
+# should let inline empty dotpackage options clear environment inputs
+BOOTBOX_DOTPKG='dotpkgs/env' bootbox --dotpkg= --help | grep -F -- '--dotpkg         stows dot packages into target [default: none]'
+BOOTBOX_DOTPKG='dotpkgs/env' bootbox --dotpkgs= --help | grep -F -- '--dotpkg         stows dot packages into target [default: none]'
+
+# should use no SSH keys by default
+bootbox --help | grep -F -- '--ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] [default: none]'
+
+# should use SSH keys from the public environment input
+BOOTBOX_SSH_KEY='vault/env-one,vault/env-two:id_env_two' bootbox --help | grep -F -- '--ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] [default: vault/env-one,vault/env-two:id_env_two]'
+
+# should let repeated SSH key options replace environment inputs
+BOOTBOX_SSH_KEY='vault/env' bootbox --ssh-key 'vault/cli-one' --ssh-key='vault/cli-two:id_cli_two' --help | grep -F -- '--ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] [default: vault/cli-one,vault/cli-two:id_cli_two]'
+
+# should let inline empty SSH key options clear environment inputs
+BOOTBOX_SSH_KEY='vault/env' bootbox --ssh-key= --help | grep -F -- '--ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] [default: none]'
+BOOTBOX_SSH_KEY='vault/env' bootbox --ssh-keys= --help | grep -F -- '--ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] [default: none]'
+
+# should use HOME as the default target
+HOME='/tmp/bootbox-input-home' bootbox --help | grep -F -- '--target         installs dotpkgs and identities relative to here [default: /tmp/bootbox-input-home]'
+
+# should let the public environment input override the default target
+HOME='/tmp/bootbox-input-home' BOOTBOX_TARGET='/tmp/bootbox-input-env-target' bootbox --help | grep -F -- '--target         installs dotpkgs and identities relative to here [default: /tmp/bootbox-input-env-target]'
+
+# should let the target option override the environment input
+BOOTBOX_TARGET='/tmp/bootbox-input-env-target' bootbox --target '/tmp/bootbox-input-cli-target' --help | grep -F -- '--target         installs dotpkgs and identities relative to here [default: /tmp/bootbox-input-cli-target]'
+
+# should use no 1Password token by default
+bootbox --help | grep -F -- '--op-token       auths with 1password service account token [default: none]'
+
+# should fall back to the 1Password service account environment input and mask it
+OP_SERVICE_ACCOUNT_TOKEN='fallback-service-secret' bootbox --help | grep -F -- '--op-token       auths with 1password service account token [default: fall...cret]'
+if OP_SERVICE_ACCOUNT_TOKEN='fallback-service-secret' bootbox --help | grep -F 'fallback-service-secret'; then exit 1; fi
+
+# should prefer and mask the public bootbox token environment input
+OP_SERVICE_ACCOUNT_TOKEN='fallback-service-secret' BOOTBOX_OP_TOKEN='public-bootbox-secret' bootbox --help | grep -F -- '--op-token       auths with 1password service account token [default: publ...cret]'
+if OP_SERVICE_ACCOUNT_TOKEN='fallback-service-secret' BOOTBOX_OP_TOKEN='public-bootbox-secret' bootbox --help | grep -F 'public-bootbox-secret'; then exit 1; fi
+
+# should let the token option override the public environment input and keep it masked
+BOOTBOX_OP_TOKEN='public-bootbox-secret' bootbox --op-token 'option-argument-secret' --help | grep -F -- '--op-token       auths with 1password service account token [default: opti...cret]'
+if BOOTBOX_OP_TOKEN='public-bootbox-secret' bootbox --op-token 'option-argument-secret' --help | grep -F 'option-argument-secret'; then exit 1; fi
+
+# should allow an inline empty token option to clear the environment input
+BOOTBOX_OP_TOKEN='public-bootbox-secret' bootbox --op-token= --help | grep -F -- '--op-token       auths with 1password service account token [default: none]'
+
+# should show disabled boolean defaults
 bootbox --help | grep -F -- '--debug          shows debug messages [default: off]'
-bootbox --debug --help | grep -F -- '--debug          shows debug messages [default: on]'
 bootbox --help | grep -F -- '--quiet          suppresses bootbox status output [default: off]'
-bootbox --quiet --help | grep -F -- '--quiet          suppresses bootbox status output [default: on]'
-BOOTBOX_QUIET=1 bootbox --help | grep -F -- '--quiet          suppresses bootbox status output [default: on]'
 bootbox --help | grep -F -- '--no-sudo        disables sudo checks, prompts, and elevation [default: off]'
-bootbox --no-sudo --help | grep -F -- '--no-sudo        disables sudo checks, prompts, and elevation [default: on]'
-BOOTBOX_NO_SUDO=1 bootbox --help | grep -F -- '--no-sudo        disables sudo checks, prompts, and elevation [default: on]'
 bootbox --help | grep -F -- '--force          forces supported overwrite operations [default: off]'
-bootbox --force --help | grep -F -- '--force          forces supported overwrite operations [default: on]'
 
-# should let inline empty brewfile values clear env defaults
-BOOTBOX_BREWFILE='Brewfile.example' bootbox --brewfile= --help | grep -F -- '--brewfile       installs brewfiles from local paths or URLs [default: none]'
-BOOTBOX_BREWFILE='Brewfile.example' bootbox --brewfiles= --help | grep -F -- '--brewfile       installs brewfiles from local paths or URLs [default: none]'
+# should enable booleans from public environment inputs
+BOOTBOX_DEBUG=1 bootbox --help | grep -F -- '--debug          shows debug messages [default: on]'
+BOOTBOX_QUIET=1 bootbox --help | grep -F -- '--quiet          suppresses bootbox status output [default: on]'
+BOOTBOX_NO_SUDO=1 bootbox --help | grep -F -- '--no-sudo        disables sudo checks, prompts, and elevation [default: on]'
+BOOTBOX_FORCE=1 bootbox --help | grep -F -- '--force          forces supported overwrite operations [default: on]'
 
-# should let inline empty dotpkg values clear env defaults
-BOOTBOX_DOTPKG='dotpkgs/git' bootbox --dotpkg= --help | grep -F -- '--dotpkg         stows dot packages into target [default: none]'
-BOOTBOX_DOTPKG='dotpkgs/git' bootbox --dotpkgs= --help | grep -F -- '--dotpkg         stows dot packages into target [default: none]'
-
-# should let inline empty ssh key values clear env defaults
-BOOTBOX_SSH_KEY='vault/item' bootbox --ssh-key= --help | grep -F -- '--ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] [default: none]'
-BOOTBOX_SSH_KEY='vault/item' bootbox --ssh-keys= --help | grep -F -- '--ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] [default: none]'
+# should let boolean options override disabled environment inputs
+BOOTBOX_DEBUG=0 bootbox --debug --help | grep -F -- '--debug          shows debug messages [default: on]'
+BOOTBOX_QUIET=0 bootbox --quiet --help | grep -F -- '--quiet          suppresses bootbox status output [default: on]'
+BOOTBOX_NO_SUDO=0 bootbox --no-sudo --help | grep -F -- '--no-sudo        disables sudo checks, prompts, and elevation [default: on]'
+BOOTBOX_FORCE=0 bootbox --force --help | grep -F -- '--force          forces supported overwrite operations [default: on]'
 
 # should fail cleanly when a separated value is missing
 ! bootbox --brewfile > .tmp/missing-brewfile.log 2>&1

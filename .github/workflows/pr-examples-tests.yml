@@ -14,14 +14,11 @@ jobs:
       fail-fast: false
       matrix:
         example:
-          - minimal
           - inputs
-          - dotpkgs-flags
-          - dotpkgs-env
-          - dotpkgs-force-backup
-          - brewfiles-flags
-          - brewfiles-env
-          - ssh-keys-flags
+          - defaults
+          - brewfiles
+          - dotpkgs
+          - ssh-keys
           - legacy-env-compat
           - external-sudo
     env:

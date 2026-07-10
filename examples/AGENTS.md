@@ -20,10 +20,10 @@ specs consumed in CI.
 
 - `inputs` owns non-mutating public interface checks: help text, displayed defaults, input
   validation, and option/env precedence.
-- `minimal` owns the smallest bootstrap and core-readiness path.
+- `defaults` owns the baseline happy-path bootstrap and core-readiness contract.
 - Named domain examples own focused behavior such as Brewfiles, dotpackages, SSH keys, legacy
-  compatibility, and sudo handling. Keep meaningful source or mode suffixes such as `-env` and
-  `-flags` when they represent distinct contracts.
+  compatibility, and sudo handling. Input-source behavior belongs in `inputs`, not duplicate
+  mutating domain examples.
 - Add coverage to the narrowest existing example that owns the behavior. Add a new example only
   when the behavior needs incompatible setup or would blur an existing domain.
 
@@ -43,6 +43,10 @@ specs consumed in CI.
 
 - Use `## Setup` and `## Testing`.
 - Keep `Setup` focused on minimal prerequisites for the scenario.
+- Let the workflow and runtime provide CI/non-TTY context. Do not set `CI` or `NONINTERACTIVE`
+  inside example commands.
+- Mutating domain examples should normally run `bootbox` once. Use multiple successful runs only
+  when rerun, idempotency, or distinct execution modes are the scenario contract.
 - Put commands immediately below each `# should ...` line with no blank lines inside the test body.
 - Separate one `# should ...` test from the next with a blank line.
 - Do not add destroy or cleanup sections for runner-local state. Each example runs in its own fresh

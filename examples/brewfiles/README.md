@@ -1,20 +1,18 @@
-# Brewfiles Flags Example
+# Brewfiles Example
 
-This example uses repeated `--brewfile` flags with a local Brewfile and a `file://` Brewfile URL to
-exercise multi-source Brewfile handling under `--debug` and verify the requested formulas are
-available afterwards.
+This example uses repeated `--brewfile` options with a local Brewfile and a `file://` Brewfile URL
+to exercise multi-source Brewfile handling under `--debug` and verify the requested formulas are
+available afterwards. Input-source precedence is covered separately by the inputs example.
 
 ## Setup
 
 ```bash
 # should reset the example scratch directory
-rm -rf .tmp && mkdir -p .tmp/home
+rm -rf .tmp && mkdir -p .tmp
 
-# should run bootbox with local and file-url brewfiles from CLI flags
+# should run bootbox with local and file-url brewfiles
 url_brewfile="file://$(pwd)/Brewfile.url" && \
-CI=1 NONINTERACTIVE=1 \
 bootbox \
-  --target "$(pwd)/.tmp/home" \
   --debug \
   --brewfile Brewfile.base \
   --brewfile "$url_brewfile" \

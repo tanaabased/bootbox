@@ -57,7 +57,7 @@ When this file conflicts with broader defaults, this file wins for work in `boot
 - Keep `--check-core` hidden from `--help`; it is an intentionally undocumented 0/1 readiness probe
   for `bootbox`'s built-in Homebrew core only.
 - Keep `--check-core` quiet under normal operation; if its behavior changes, update the CLI
-  contract example explicitly.
+  inputs example explicitly.
 - Keep `--no-sudo` as a strict no-elevation mode: no sudo probes, prompts, timestamp cleanup, or
   sudo-backed helper operations.
 - Keep planned-action output aligned with actual execution order.

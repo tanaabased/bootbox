@@ -9,7 +9,7 @@ changes.
 
 ```bash
 # should prepare the real bootbox core toolchain
-CI=1 NONINTERACTIVE=1 bootbox --brewfile= --target "$TMPDIR/bootbox-external-sudo/core-home"
+bootbox --brewfile=
 bootbox --check-core
 
 # should prepare privileged and unprivileged runner targets
@@ -42,7 +42,7 @@ brew uninstall --formula --force tree >/dev/null 2>&1 || true
 # should let a brewfile-only plan use the real homebrew flow without bootbox sudo validation
 set -o pipefail
 sudo -k
-BOOTBOX_EXTERNAL_SUDO=1 BOOTBOX_DEBUG=1 CI=1 NONINTERACTIVE=1 \
+BOOTBOX_EXTERNAL_SUDO=1 BOOTBOX_DEBUG=1 \
 bootbox \
   --brewfile "$(pwd)/Brewfile" \
   --target "$TMPDIR/bootbox-external-sudo/root-target" \
@@ -52,7 +52,7 @@ brew list --formula tree
 # should stow a real dotpackage into a privileged target with caller-managed sudo
 set -o pipefail
 sudo -v
-BOOTBOX_EXTERNAL_SUDO=1 CI=1 NONINTERACTIVE=1 \
+BOOTBOX_EXTERNAL_SUDO=1 \
 bootbox \
   --brewfile= \
   --dotpkg "$(pwd)/dotpkgs/git" \
@@ -69,8 +69,6 @@ sudo -u nobody /bin/sh -c 'cd /private/tmp/bootbox-external-sudo/nobody && exec 
   TMPDIR="/private/tmp/bootbox-external-sudo/nobody/tmp" \
   PATH="$PATH" \
   BOOTBOX_DEBUG=1 \
-  CI=1 \
-  NONINTERACTIVE=1 \
   "/private/tmp/bootbox-external-sudo/bootbox" \
     --no-sudo \
     --brewfile= \
@@ -93,8 +91,6 @@ output="$(sudo -u nobody /bin/sh -c 'cd /private/tmp/bootbox-external-sudo/nobod
   TMPDIR="/private/tmp/bootbox-external-sudo/nobody/tmp" \
   PATH="$PATH" \
   BOOTBOX_DEBUG=1 \
-  CI=1 \
-  NONINTERACTIVE=1 \
   "/private/tmp/bootbox-external-sudo/bootbox" \
     --no-sudo \
     --brewfile= \
@@ -116,8 +112,6 @@ output="$(sudo -u nobody /bin/sh -c 'cd /private/tmp/bootbox-external-sudo/nobod
   USER=nobody \
   TMPDIR="/private/tmp/bootbox-external-sudo/nobody/tmp" \
   PATH="$PATH" \
-  CI=1 \
-  NONINTERACTIVE=1 \
   "/private/tmp/bootbox-external-sudo/bootbox" \
     --brewfile= \
     --dotpkg "/private/tmp/bootbox-external-sudo/nobody/dotpkgs/git" \
@@ -137,8 +131,6 @@ output="$(sudo -u nobody /bin/sh -c 'cd /private/tmp/bootbox-external-sudo/nobod
   TMPDIR="/private/tmp/bootbox-external-sudo/nobody/tmp" \
   PATH="$PATH" \
   BOOTBOX_EXTERNAL_SUDO=1 \
-  CI=1 \
-  NONINTERACTIVE=1 \
   "/private/tmp/bootbox-external-sudo/bootbox" \
     --brewfile= \
     --dotpkg "/private/tmp/bootbox-external-sudo/nobody/dotpkgs/git" \
@@ -152,7 +144,7 @@ test ! -e "/private/tmp/bootbox-external-sudo/denied-target/.gitconfig"
 
 # should reject contradictory sudo modes before mutation
 set +e
-output="$(BOOTBOX_EXTERNAL_SUDO=1 BOOTBOX_NO_SUDO=1 CI=1 NONINTERACTIVE=1 \
+output="$(BOOTBOX_EXTERNAL_SUDO=1 BOOTBOX_NO_SUDO=1 \
   bootbox --brewfile= 2>&1)"
 command_status="$?"
 set -e
