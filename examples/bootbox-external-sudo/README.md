@@ -35,6 +35,14 @@ test ! -e .tmp/sudo-state/invalidated
 test -f .tmp/sudo-state/validated
 test ! -e .tmp/sudo-state/unexpected
 
+# should ignore unrelated path permissions for a brewfile-only plan
+bin/run-bootbox external-brewfile 2>&1 | tee /dev/stderr | awk '
+  /debug sudo not required: brewfile-only plan has no privileged file operations/ { decision=1 }
+  /please enter sudo password:/ { prompt=1 }
+  END { if (decision && !prompt) exit 0; exit 1 }
+'
+test ! -e .tmp/sudo-state/unexpected
+
 # should skip sudo validation when external mode does not need sudo
 bin/run-bootbox external-writable 2>&1 | tee /dev/stderr | awk '/please enter sudo password:/ { found=1 } END { exit found }'
 test ! -e .tmp/sudo-state/unexpected

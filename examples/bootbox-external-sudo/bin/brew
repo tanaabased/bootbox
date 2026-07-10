@@ -1,7 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-prefix="$(cd "$(dirname "$0")/.." && pwd)"
+example_dir="$(cd "$(dirname "$0")/.." && pwd)"
+prefix="/private/var/root/bootbox-homebrew-prefix"
 
 case "${1:-}" in
   --version)
@@ -12,10 +13,21 @@ case "${1:-}" in
     ;;
   shellenv)
     printf "export HOMEBREW_PREFIX=%q\n" "$prefix"
-    printf "export PATH=%q:\"\$PATH\"\n" "$prefix/bin"
+    printf "export PATH=%q:\"\$PATH\"\n" "$example_dir/bin"
     ;;
   list)
     exit 0
+    ;;
+  bundle)
+    case "${2:-}" in
+      check)
+        if [[ "${EXAMPLE_BREW_CASE:-}" == "install" ]]; then
+          exit 1
+        fi
+        ;;
+      install)
+        ;;
+    esac
     ;;
   *)
     exit 0

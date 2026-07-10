@@ -8,6 +8,9 @@ bootbox_path="$example_dir/.tmp/bootbox"
 sudo_case=""
 target="/private/var/root/bootbox-$case_name"
 dotpkg="dotpkgs/git"
+brewfile=""
+brew_case=""
+debug=""
 external_sudo=""
 no_sudo=""
 
@@ -15,6 +18,7 @@ case "$case_name" in
   external-valid)
     external_sudo="1"
     sudo_case="external-valid"
+    debug="1"
     ;;
   external-invalid)
     external_sudo="1"
@@ -24,6 +28,14 @@ case "$case_name" in
     external_sudo="1"
     sudo_case="unexpected"
     target="$example_dir/.tmp/writable-home"
+    ;;
+  external-brewfile)
+    external_sudo="1"
+    sudo_case="unexpected"
+    dotpkg=""
+    brewfile="$example_dir/Brewfile"
+    brew_case="install"
+    debug="1"
     ;;
   standalone-cached)
     sudo_case="standalone-cached"
@@ -55,6 +67,9 @@ env \
   ${external_sudo:+"BOOTBOX_EXTERNAL_SUDO=$external_sudo"} \
   ${no_sudo:+"BOOTBOX_NO_SUDO=$no_sudo"} \
   ${dotpkg:+"BOOTBOX_DOTPKG=$dotpkg"} \
+  ${brewfile:+"BOOTBOX_BREWFILE=$brewfile"} \
+  ${debug:+"BOOTBOX_DEBUG=$debug"} \
+  EXAMPLE_BREW_CASE="$brew_case" \
   EXAMPLE_SUDO_CASE="$sudo_case" \
   EXAMPLE_SUDO_STATE_DIR="$state_dir" \
   BOOTBOX_TARGET="$target" \

@@ -1,5 +1,7 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
+- Fixed `sudo` credential checks so they only run when planned operations require elevated file helpers.
+
 ## v1.0.0-beta.7 - [July 9, 2026](https://github.com/tanaabased/bootbox/releases/tag/v1.0.0-beta.7)
 
 - Added internal `BOOTBOX_EXTERNAL_SUDO` support for caller-managed sudo sessions. ([#9](https://github.com/tanaabased/bootbox/pull/9))
