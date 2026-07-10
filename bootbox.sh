@@ -1282,7 +1282,7 @@ validate_external_sudo_credential() {
   abort_multi "$(cat <<EOABORT
 bootbox external sudo mode requires an active sudo credential.
 the planned operation requires elevation: $(planned_sudo_reasons).
-the calling process must run \`sudo -v\` and maintain the credential before invoking bootbox.
+the calling process must run sudo -v and maintain the credential before invoking bootbox.
 EOABORT
 )"
 }
@@ -1347,7 +1347,7 @@ install_homebrew() {
 
   BREW="$(find_homebrew || true)"
   if [[ -z "${BREW}" ]]; then
-    abort "homebrew install finished but \`brew\` could not be found afterwards."
+    abort "homebrew install finished but brew could not be found afterwards."
   fi
 
   load_homebrew_shellenv "${BREW}"
@@ -2199,7 +2199,7 @@ interactive_tty_input() {
 # shellcheck disable=SC2016
 if [[ -z "${NONINTERACTIVE-}" ]]; then
   if [[ -n "${CI-}" ]]; then
-    warn 'running in non-interactive mode because `$CI` is set.'
+    warn 'running in non-interactive mode because $CI is set.'
     NONINTERACTIVE=1
   elif ! interactive_tty_available; then
     if [[ -z "${INTERACTIVE-}" ]];  then
@@ -2209,7 +2209,7 @@ if [[ -z "${NONINTERACTIVE-}" ]]; then
       abort "cannot run interactive mode because no interactive terminal is available."
     fi
   elif [[ ! -t 0 ]]; then
-    debug "${tty_tp}using${tty_reset} ${tty_ts}/dev/tty${tty_reset} for interactive input because \`stdin\` is not a tty."
+    debug "${tty_tp}using${tty_reset} ${tty_ts}/dev/tty${tty_reset} for interactive input because stdin is not a tty."
   fi
 else
   log "${tty_tp}running${tty_reset} in ${tty_ts}non-interactive mode${tty_reset} ${tty_dim}because \$NONINTERACTIVE is set${tty_reset}"

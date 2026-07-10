@@ -37,7 +37,12 @@ specs consumed in CI.
 - Hide repeated fixture environment and argument setup behind committed example-local helper scripts
   when it makes README commands clearer.
 - Use `.tmp/` for scenario scratch data, logs, patched script copies, and helper internals.
-- Avoid braced shell variable expansions such as `${VAR}` in README command blocks when `$VAR` works.
+- Leia embeds executable command blocks in JavaScript template literals. Inside those blocks, do not
+  use literal backticks or braced shell expansions such as `${VAR}`.
+- Use `$(command)` instead of backtick command substitution and `$VAR` instead of `${VAR}`. When
+  braces are required for shell semantics, move that logic into a checked-in example-local helper.
+- These restrictions do not apply to Markdown fences or inline code outside executable blocks;
+  shell tests using `[ ... ]` or `[[ ... ]]` remain safe.
 
 ## Scenario Shape
 
