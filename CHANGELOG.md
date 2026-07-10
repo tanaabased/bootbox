@@ -1,5 +1,7 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
+## v1.0.0-beta.8 - [July 10, 2026](https://github.com/tanaabased/bootbox/releases/tag/v1.0.0-beta.8)
+
 - Fixed `sudo` credential checks so they only run when planned operations require elevated file helpers.
 
 ## v1.0.0-beta.7 - [July 9, 2026](https://github.com/tanaabased/bootbox/releases/tag/v1.0.0-beta.7)
