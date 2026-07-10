@@ -22,9 +22,8 @@ curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | bash
 - The normal setup assumes the invoking user can use admin or sudo access if Homebrew must be
   installed.
 - Before installing missing Homebrew on Linux, it requires Git 2.7 or newer, glibc 2.13 or newer, a
-  C compiler (`cc`, `gcc`, or `clang`), `make`, `file`, `ps`, and `bwrap`. Install the equivalent
-  system dependencies for your distribution first; `bootbox` does not invoke a distro package
-  manager.
+  C compiler (`cc`, `gcc`, or `clang`), `make`, `file`, and `ps`. Install the equivalent system
+  dependencies for your distribution first; `bootbox` does not invoke a distro package manager.
 - An existing Homebrew installation must be manageable by the invoking user without sudo.
 - For 1Password-backed SSH keys, provide a service account token with `--op-token`,
   `BOOTBOX_OP_TOKEN`, or `OP_SERVICE_ACCOUNT_TOKEN`.

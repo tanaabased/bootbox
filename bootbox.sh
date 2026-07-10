@@ -1353,7 +1353,7 @@ validate_linux_homebrew_prerequisites() {
   if ! executable_available cc && ! executable_available gcc && ! executable_available clang; then
     missing_requirements+=("a C compiler (cc, gcc, or clang)")
   fi
-  for requirement in make file ps bwrap; do
+  for requirement in make file ps; do
     if ! executable_available "${requirement}"; then
       missing_requirements+=("${requirement}")
     fi
