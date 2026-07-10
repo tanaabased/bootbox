@@ -63,7 +63,7 @@ test "$(cat "$TMPDIR/bootbox-external-sudo/root-target/.gitconfig")" = "$(cat do
 
 # should complete a real dotpackage install as a standard user without any bootbox sudo probe
 set -o pipefail
-sudo -u nobody /usr/bin/env \
+sudo -u nobody /bin/sh -c 'cd /private/tmp/bootbox-external-sudo/nobody && exec /usr/bin/env "$@"' -- \
   HOME="/private/tmp/bootbox-external-sudo/nobody/home" \
   USER=nobody \
   TMPDIR="/private/tmp/bootbox-external-sudo/nobody/tmp" \
@@ -87,7 +87,7 @@ test "$(cat "/private/tmp/bootbox-external-sudo/nobody/home/.gitconfig")" = "$(c
 
 # should reject a privileged target in no-sudo mode without probing sudo access
 set +e
-output="$(sudo -u nobody /usr/bin/env \
+output="$(sudo -u nobody /bin/sh -c 'cd /private/tmp/bootbox-external-sudo/nobody && exec /usr/bin/env "$@"' -- \
   HOME="/private/tmp/bootbox-external-sudo/nobody/home" \
   USER=nobody \
   TMPDIR="/private/tmp/bootbox-external-sudo/nobody/tmp" \
@@ -111,7 +111,7 @@ test ! -e "/private/tmp/bootbox-external-sudo/denied-target/.gitconfig"
 
 # should reject a standard user before a standalone privileged mutation
 set +e
-output="$(sudo -u nobody /usr/bin/env \
+output="$(sudo -u nobody /bin/sh -c 'cd /private/tmp/bootbox-external-sudo/nobody && exec /usr/bin/env "$@"' -- \
   HOME="/private/tmp/bootbox-external-sudo/nobody/home" \
   USER=nobody \
   TMPDIR="/private/tmp/bootbox-external-sudo/nobody/tmp" \
@@ -131,7 +131,7 @@ test ! -e "/private/tmp/bootbox-external-sudo/denied-target/.gitconfig"
 
 # should reject caller-managed sudo when a standard user has no credential
 set +e
-output="$(sudo -u nobody /usr/bin/env \
+output="$(sudo -u nobody /bin/sh -c 'cd /private/tmp/bootbox-external-sudo/nobody && exec /usr/bin/env "$@"' -- \
   HOME="/private/tmp/bootbox-external-sudo/nobody/home" \
   USER=nobody \
   TMPDIR="/private/tmp/bootbox-external-sudo/nobody/tmp" \
