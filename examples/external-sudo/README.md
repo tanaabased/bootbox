@@ -66,6 +66,7 @@ set -o pipefail
 sudo -u nobody /bin/sh -c 'cd /private/tmp/bootbox-external-sudo/nobody && exec /usr/bin/env "$@"' -- \
   HOME="/private/tmp/bootbox-external-sudo/nobody/home" \
   USER=nobody \
+  CI="$CI" \
   TMPDIR="/private/tmp/bootbox-external-sudo/nobody/tmp" \
   PATH="$PATH" \
   BOOTBOX_DEBUG=1 \
@@ -88,6 +89,7 @@ set +e
 output="$(sudo -u nobody /bin/sh -c 'cd /private/tmp/bootbox-external-sudo/nobody && exec /usr/bin/env "$@"' -- \
   HOME="/private/tmp/bootbox-external-sudo/nobody/home" \
   USER=nobody \
+  CI="$CI" \
   TMPDIR="/private/tmp/bootbox-external-sudo/nobody/tmp" \
   PATH="$PATH" \
   BOOTBOX_DEBUG=1 \
@@ -110,6 +112,7 @@ set +e
 output="$(sudo -u nobody /bin/sh -c 'cd /private/tmp/bootbox-external-sudo/nobody && exec /usr/bin/env "$@"' -- \
   HOME="/private/tmp/bootbox-external-sudo/nobody/home" \
   USER=nobody \
+  CI="$CI" \
   TMPDIR="/private/tmp/bootbox-external-sudo/nobody/tmp" \
   PATH="$PATH" \
   "/private/tmp/bootbox-external-sudo/bootbox" \
@@ -128,6 +131,7 @@ set +e
 output="$(sudo -u nobody /bin/sh -c 'cd /private/tmp/bootbox-external-sudo/nobody && exec /usr/bin/env "$@"' -- \
   HOME="/private/tmp/bootbox-external-sudo/nobody/home" \
   USER=nobody \
+  CI="$CI" \
   TMPDIR="/private/tmp/bootbox-external-sudo/nobody/tmp" \
   PATH="$PATH" \
   BOOTBOX_EXTERNAL_SUDO=1 \
