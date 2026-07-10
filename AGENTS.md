@@ -83,8 +83,8 @@ When this file conflicts with broader defaults, this file wins for work in `boot
 - Prefer direct command pipelines, command substitutions, and deterministic inline values over
   writing files just to inspect them later.
 - Do not capture command output into shell variables just to grep it later. Leia failure output must
-  surface useful stdout/stderr in CI; prefer direct commands or `cmd | tee /dev/stderr | grep ...`
-  when an assertion needs both matching and diagnostics.
+  surface useful stdout/stderr in CI; prefer direct commands or a focused `awk` check that prints
+  each input line while tracking assertion state.
 - Treat each blank-line-separated Leia block as a separate script. Do not rely on shell variables,
   functions, or working-directory changes persisting across `should` blocks.
 - Use `TMPDIR` for durable fixtures, unavoidable logs, and helper internals only.

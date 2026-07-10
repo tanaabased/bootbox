@@ -11,8 +11,8 @@ specs consumed in CI.
   functions, or working-directory changes persisting across `should` blocks.
 - Prefer direct command pipelines, command substitutions, and deterministic inline values over
   writing files just to inspect them later.
-- Prefer direct output assertions with `cmd 2>&1 | tee /dev/stderr | grep ...` or a focused `awk`
-  check over redirecting output to `.tmp/*.log` and grepping it later.
+- Prefer direct output assertions or a focused `awk` check that prints each input line while
+  tracking assertion state over redirecting output to `.tmp/*.log` and grepping it later.
 - Do not capture command output into shell variables just to grep it later. If capture is needed to
   preserve a failing command's status, print the captured output before assertions.
 

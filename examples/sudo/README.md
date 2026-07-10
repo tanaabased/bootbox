@@ -38,7 +38,11 @@ set -o pipefail
 sudo -k
 HOME="$TMPDIR/bootbox-sudo/home" BOOTBOX_EXTERNAL_SUDO=1 BOOTBOX_DEBUG=1 \
 bootbox --brewfile "$(pwd)/Brewfile" \
-  2>&1 | tee /dev/stderr | grep -F 'debug sudo not required: brewfile-only plan has no privileged file operations'
+  2>&1 | awk '
+  { print }
+  /debug sudo not required: brewfile-only plan has no privileged file operations/ { found=1 }
+  END { exit !found }
+'
 brew list --formula tree
 
 # should stow dotpackages into HOME without probing or prompting for sudo
@@ -46,7 +50,8 @@ set -o pipefail
 sudo -k
 HOME="$TMPDIR/bootbox-sudo/home" BOOTBOX_DEBUG=1 \
 bootbox --brewfile= --dotpkg "$(pwd)/dotpkgs/git" \
-  2>&1 | tee /dev/stderr | awk '
+  2>&1 | awk '
+  { print }
   /enter your admin password when prompted to continue/ { prompt=1 }
   /does not appear to have sudo access/ { probe=1 }
   /has sudo access/ { probe=1 }
@@ -69,7 +74,7 @@ if printf "%s\n" "$output" | grep -F 'enter your admin password when prompted to
 
 # should reject Homebrew that the invoking user cannot manage without probing sudo
 set +e
-output="$(sudo -u nobody /usr/bin/env \
+output="$(sudo -u nobody /bin/sh -c 'cd /tmp/bootbox-sudo/nobody && exec /usr/bin/env "$@"' -- \
   HOME=/tmp/bootbox-sudo/nobody/home \
   USER=nobody \
   CI="$CI" \
