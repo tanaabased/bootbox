@@ -1,4 +1,4 @@
-# Legacy Env Compatibility Example
+# Legacy Example
 
 This example covers transitional compatibility for the old `TANAAB_*` environment namespace. New
 callers should use `BOOTBOX_*`; this legacy support is not the forward public contract and will be

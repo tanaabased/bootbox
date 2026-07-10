@@ -19,11 +19,12 @@ jobs:
         example:
           - inputs
           - defaults
+          - homebrew
           - brewfiles
           - dotpkgs
           - ssh-keys
-          - legacy-env-compat
-          - external-sudo
+          - legacy
+          - sudo
     env:
       HOMEBREW_NO_AUTO_UPDATE: '1'
       BOOTBOX_OP_TESTVAULT: ${{ secrets.TANAAB_OP_TESTVAULT }}

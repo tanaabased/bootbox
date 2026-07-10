@@ -1,4 +1,4 @@
-# Sudo Boundaries Example
+# Sudo Example
 
 This example exercises `bootbox` sudo boundaries with real Homebrew, Stow, users, permissions, and
 sudo state. It verifies that existing Homebrew and current-user configuration never trigger Bootbox
@@ -12,19 +12,19 @@ bootbox --brewfile=
 bootbox --check-core
 
 # should prepare writable and inaccessible home fixtures
-rm -rf "$TMPDIR/bootbox-external-sudo"
-sudo rm -rf /tmp/bootbox-external-sudo
-mkdir -p "$TMPDIR/bootbox-external-sudo/home"
+rm -rf "$TMPDIR/bootbox-sudo"
+sudo rm -rf /tmp/bootbox-sudo
+mkdir -p "$TMPDIR/bootbox-sudo/home"
 sudo mkdir -p \
-  "$TMPDIR/bootbox-external-sudo/root-home" \
-  /tmp/bootbox-external-sudo/nobody/home \
-  /tmp/bootbox-external-sudo/nobody/tmp
-sudo cp "$(command -v bootbox)" /tmp/bootbox-external-sudo/bootbox
-sudo chown -R nobody /tmp/bootbox-external-sudo/nobody
+  "$TMPDIR/bootbox-sudo/root-home" \
+  /tmp/bootbox-sudo/nobody/home \
+  /tmp/bootbox-sudo/nobody/tmp
+sudo cp "$(command -v bootbox)" /tmp/bootbox-sudo/bootbox
+sudo chown -R nobody /tmp/bootbox-sudo/nobody
 sudo chmod 755 \
-  "$TMPDIR/bootbox-external-sudo/root-home" \
-  /tmp/bootbox-external-sudo \
-  /tmp/bootbox-external-sudo/bootbox
+  "$TMPDIR/bootbox-sudo/root-home" \
+  /tmp/bootbox-sudo \
+  /tmp/bootbox-sudo/bootbox
 
 # should leave the brewfile formula absent before the scenario
 brew uninstall --formula --force tree >/dev/null 2>&1 || true
@@ -36,7 +36,7 @@ brew uninstall --formula --force tree >/dev/null 2>&1 || true
 # should let a brewfile-only plan use existing Homebrew without bootbox sudo validation
 set -o pipefail
 sudo -k
-HOME="$TMPDIR/bootbox-external-sudo/home" BOOTBOX_EXTERNAL_SUDO=1 BOOTBOX_DEBUG=1 \
+HOME="$TMPDIR/bootbox-sudo/home" BOOTBOX_EXTERNAL_SUDO=1 BOOTBOX_DEBUG=1 \
 bootbox --brewfile "$(pwd)/Brewfile" \
   2>&1 | tee /dev/stderr | grep -F 'debug sudo not required: brewfile-only plan has no privileged file operations'
 brew list --formula tree
@@ -44,7 +44,7 @@ brew list --formula tree
 # should stow dotpackages into HOME without probing or prompting for sudo
 set -o pipefail
 sudo -k
-HOME="$TMPDIR/bootbox-external-sudo/home" BOOTBOX_DEBUG=1 \
+HOME="$TMPDIR/bootbox-sudo/home" BOOTBOX_DEBUG=1 \
 bootbox --brewfile= --dotpkg "$(pwd)/dotpkgs/git" \
   2>&1 | tee /dev/stderr | awk '
   /enter your admin password when prompted to continue/ { prompt=1 }
@@ -52,12 +52,12 @@ bootbox --brewfile= --dotpkg "$(pwd)/dotpkgs/git" \
   /has sudo access/ { probe=1 }
   END { exit (prompt || probe) }
 '
-test -L "$TMPDIR/bootbox-external-sudo/home/.gitconfig"
-test "$(cat "$TMPDIR/bootbox-external-sudo/home/.gitconfig")" = "$(cat dotpkgs/git/.gitconfig)"
+test -L "$TMPDIR/bootbox-sudo/home/.gitconfig"
+test "$(cat "$TMPDIR/bootbox-sudo/home/.gitconfig")" = "$(cat dotpkgs/git/.gitconfig)"
 
 # should reject a home directory not owned by the invoking user without probing sudo
 set +e
-output="$(HOME="$TMPDIR/bootbox-external-sudo/root-home" BOOTBOX_DEBUG=1 \
+output="$(HOME="$TMPDIR/bootbox-sudo/root-home" BOOTBOX_DEBUG=1 \
   bootbox --brewfile= --dotpkg "$(pwd)/dotpkgs/git" 2>&1)"
 command_status="$?"
 set -e
@@ -70,13 +70,13 @@ if printf "%s\n" "$output" | grep -F 'enter your admin password when prompted to
 # should reject Homebrew that the invoking user cannot manage without probing sudo
 set +e
 output="$(sudo -u nobody /usr/bin/env \
-  HOME=/tmp/bootbox-external-sudo/nobody/home \
+  HOME=/tmp/bootbox-sudo/nobody/home \
   USER=nobody \
   CI="$CI" \
-  TMPDIR=/tmp/bootbox-external-sudo/nobody/tmp \
+  TMPDIR=/tmp/bootbox-sudo/nobody/tmp \
   PATH="$PATH" \
   BOOTBOX_DEBUG=1 \
-  /tmp/bootbox-external-sudo/bootbox --no-sudo --brewfile= 2>&1)"
+  /tmp/bootbox-sudo/bootbox --no-sudo --brewfile= 2>&1)"
 command_status="$?"
 set -e
 printf "%s\n" "$output"
