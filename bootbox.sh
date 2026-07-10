@@ -801,6 +801,8 @@ detect_os() {
   os="$(uname)"
   if [[ "${os}" == "Darwin" ]]; then
     DETECTED_OS="macos"
+  elif [[ "${os}" == "Linux" ]]; then
+    DETECTED_OS="linux"
   else
     DETECTED_OS="${os}"
   fi
@@ -2098,9 +2100,9 @@ if [[ "${EUID:-${UID}}" == "0" ]]; then
 fi
 
 # abort if unsupported os
-if [[ "${OS}" != "macos" ]]; then
+if [[ "${OS}" != "macos" ]] && [[ "${OS}" != "linux" ]]; then
   abort_multi "$(cat <<EOABORT
-this script only supports ${tty_ts}macOS${tty_reset}; ${tty_red}${OS}${tty_reset} is not supported.
+this script only supports ${tty_ts}macOS${tty_reset} and ${tty_ts}Linux${tty_reset}; ${tty_red}${OS}${tty_reset} is not supported.
 check the project README for current support details: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
