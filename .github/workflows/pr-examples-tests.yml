@@ -8,11 +8,14 @@ permissions:
 
 jobs:
   examples:
-    name: ${{ matrix.example }}
-    runs-on: macos-26
+    name: ${{ matrix.example }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os:
+          - macos-26
+          - ubuntu-24.04
         example:
           - inputs
           - defaults
@@ -50,6 +53,6 @@ jobs:
       - name: Run Leia-backed example
         shell: bash
         run: |
-          brew update
+          PATH="/home/linuxbrew/.linuxbrew/bin:$PATH" brew update
           mkdir -p examples/.tmp
           TMPDIR="$PWD/examples/.tmp" ./node_modules/.bin/leia "examples/${{ matrix.example }}/README.md" --stdin --retry 0
