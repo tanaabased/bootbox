@@ -827,7 +827,9 @@ declare -a BOOTBOX_CORE_BREW_PACKAGES=(
 )
 
 # GET THE LTF right away once we know we are not exiting through usage/version.
-BOOTBOX_TMPFILE="$(mktemp -t bootbox.XXXXXX)"
+if ! BOOTBOX_TMPFILE="$(mktemp -t bootbox.XXXXXX)"; then
+  abort "could not create a bootbox temporary file in ${TMPDIR:-the system temporary directory}."
+fi
 
 # derive the rest of the runtime defaults after argument parsing
 detect_arch
@@ -976,6 +978,7 @@ unset DOTPKG_BACKUP_DIR
 unset STOW
 
 declare -a PLANNED_ACTIONS=()
+declare -a PLANNED_SUDO_REASONS=()
 declare -a CORE_BREW_FORMULAS_TO_INSTALL=()
 declare -a CORE_BREW_CASKS_TO_INSTALL=()
 declare -a CORE_BREW_CASK_DISPLAY_TO_INSTALL=()
@@ -1076,6 +1079,93 @@ find_first_existing_parent() {
   echo "$dir"
 }
 
+validate_temporary_directory() {
+  if [[ ! -d "${BOOTBOX_TMPDIR}" ]] || [[ ! -w "${BOOTBOX_TMPDIR}" ]]; then
+    abort "bootbox temporary directory is not writable: ${BOOTBOX_TMPDIR}"
+  fi
+}
+
+plan_sudo_requirement() {
+  append_unique_array_value PLANNED_SUDO_REASONS "$1"
+}
+
+planned_path_requires_sudo() {
+  local reason="$1"
+  local path="$2"
+  local perm_dir
+
+  perm_dir="$(find_first_existing_parent "${path}")"
+  if [[ -w "${perm_dir}" ]]; then
+    return 1
+  fi
+
+  plan_sudo_requirement "${reason}"
+}
+
+planned_operations_require_sudo() {
+  [[ "${#PLANNED_SUDO_REASONS[@]}" -gt 0 ]]
+}
+
+planned_sudo_reasons() {
+  array_join "; " PLANNED_SUDO_REASONS
+}
+
+plan_sudo_requirements() {
+  local backup_path
+  local conflict_target
+  local source_path
+  local ssh_dir
+  local target_requires_sudo=""
+  local reason
+
+  PLANNED_SUDO_REASONS=()
+
+  if [[ "${BREW_NEEDS_INSTALL:-0}" == "1" ]]; then
+    plan_sudo_requirement "Homebrew installation may require elevation"
+  fi
+
+  if [[ -n "${SSH_KEYS_NEED_INSTALL:-}" ]]; then
+    ssh_dir="$(ssh_dir_path)"
+    if planned_path_requires_sudo "ssh key destination ${ssh_dir} is not writable" "${ssh_dir}"; then
+      :
+    fi
+  fi
+
+  if [[ -n "${DOTPKGS_NEED_STOW:-}" ]]; then
+    if planned_path_requires_sudo "dotpackage destination ${TARGET} is not writable" "${TARGET}"; then
+      target_requires_sudo="1"
+    fi
+
+    if [[ -z "${target_requires_sudo}" ]] && [[ "${#DOTPKG_CONFLICT_TARGETS[@]}" -gt 0 ]]; then
+      for conflict_target in "${DOTPKG_CONFLICT_TARGETS[@]}"; do
+        source_path="${TARGET}/${conflict_target}"
+        backup_path="${DOTPKG_BACKUP_DIR}/${conflict_target}"
+
+        if planned_path_requires_sudo "dotpackage conflict ${source_path} cannot be replaced without elevation" "${source_path}"; then
+          :
+        fi
+        if planned_path_requires_sudo "dotpackage backup destination ${backup_path} is not writable" "${backup_path}"; then
+          :
+        fi
+      done
+    fi
+  fi
+
+  if planned_operations_require_sudo; then
+    for reason in "${PLANNED_SUDO_REASONS[@]}"; do
+      debug "sudo required: ${reason}"
+    done
+  elif [[ -n "${BREWFILES_NEED_INSTALL:-}" ]] \
+    && [[ "${BREW_NEEDS_INSTALL:-0}" != "1" ]] \
+    && [[ "${#CORE_BREW_DISPLAY_TO_INSTALL[@]}" -eq 0 ]] \
+    && [[ -z "${SSH_KEYS_NEED_INSTALL:-}" ]] \
+    && [[ -z "${DOTPKGS_NEED_STOW:-}" ]]; then
+    debug "sudo not required: brewfile-only plan has no privileged file operations"
+  else
+    debug "sudo not required: planned operations have no privileged file operations"
+  fi
+}
+
 find_homebrew() {
   local candidate
   local -a candidates=()
@@ -1167,6 +1257,7 @@ validate_external_sudo_credential() {
 
   abort_multi "$(cat <<EOABORT
 bootbox external sudo mode requires an active sudo credential.
+the planned operation requires elevation: $(planned_sudo_reasons).
 the calling process must run \`sudo -v\` and maintain the credential before invoking bootbox.
 EOABORT
 )"
@@ -1910,14 +2001,6 @@ install_dotpkgs() {
   fi
 }
 
-refresh_permission_dirs() {
-  HOMEBREW_PERM_DIR="$(find_first_existing_parent "$HOMEBREW_PREFIX")"
-  PERM_DIR="$(find_first_existing_parent "$TARGET")"
-
-  debug "resolved Homebrew prefix ${HOMEBREW_PREFIX} to a perm check on ${HOMEBREW_PERM_DIR}"
-  debug "resolved install destination ${TARGET} to a perm check on ${PERM_DIR}"
-}
-
 major_minor() {
   echo "${1%%.*}.$(
     x="${1#*.}"
@@ -1977,16 +2060,6 @@ fi
 CURL=$(find_tool curl);
 debug "using the cURL at ${CURL}"
 
-####################################################################### version validation
-
-needs_sudo() {
-  if [[ ! -w "$HOMEBREW_PERM_DIR" ]] || [[ ! -w "$PERM_DIR" ]] || [[ ! -w "$BOOTBOX_TMPDIR" ]]; then
-    return 0;
-  else
-    return 1;
-  fi
-}
-
 ####################################################################### pre-script errors
 
 # abort if run as root
@@ -2025,6 +2098,7 @@ EOABORT
   fi
 fi
 
+validate_temporary_directory
 plan_homebrew
 plan_core_homebrew_packages
 plan_brewfiles
@@ -2043,9 +2117,7 @@ if ! have_planned_actions; then
   finish_noop
 fi
 
-refresh_permission_dirs
-
-# @NOTE: in order to do what we want here does the user actually need to be a sudoer?
+plan_sudo_requirements
 
 if no_sudo_enabled && [[ "${BREW_NEEDS_INSTALL:-0}" == "1" ]]; then
   abort_multi "$(cat <<EOABORT
@@ -2056,21 +2128,21 @@ EOABORT
 )"
 fi
 
-if needs_sudo && no_sudo_enabled; then
+if planned_operations_require_sudo && no_sudo_enabled; then
   abort_multi "$(cat <<EOABORT
-bootbox is running with ${tty_bold}--no-sudo${tty_reset}, but ${tty_bold}${USER}${tty_reset} cannot write to ${tty_red}${TARGET}${tty_reset} or the expected Homebrew location ${tty_red}${HOMEBREW_PREFIX}${tty_reset}.
-prepare writable Homebrew and target paths in the wrapper or machine-prep layer, or use --target to install into a directory ${tty_bold}${USER}${tty_reset} can write to.
+bootbox is running with ${tty_bold}--no-sudo${tty_reset}, but the planned operation requires elevation: $(planned_sudo_reasons).
+prepare the responsible destination in the wrapper or machine-prep layer, or use --target to install into a directory ${tty_bold}${USER}${tty_reset} can write to.
 for more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
 fi
 
-if needs_sudo && external_sudo_enabled; then
+if planned_operations_require_sudo && external_sudo_enabled; then
   validate_external_sudo_credential
-elif needs_sudo && ! have_sudo_access; then
+elif planned_operations_require_sudo && ! have_sudo_access; then
   abort_multi "$(cat <<EOABORT
-${tty_bold}${USER}${tty_reset} cannot write to ${tty_red}${TARGET}${tty_reset} or the expected Homebrew location ${tty_red}${HOMEBREW_PREFIX}${tty_reset} and is not a ${tty_bold}sudo${tty_reset} user.
-rerun setup with a sudoer or use --target to install into a directory ${tty_bold}${USER}${tty_reset} can write to.
+${tty_bold}${USER}${tty_reset} cannot complete the planned operation without ${tty_bold}sudo${tty_reset}: $(planned_sudo_reasons).
+rerun setup with a sudoer, prepare the responsible destination first, or use --target to install into a directory ${tty_bold}${USER}${tty_reset} can write to.
 for more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
@@ -2215,7 +2287,7 @@ auto_chmod() {
 }
 
 # Invalidate sudo timestamp before exiting (if it wasn't active before).
-if sudo_enabled && ! external_sudo_enabled && [[ -x /usr/bin/sudo ]] && ! sudo_credential_active; then
+if sudo_enabled && ! external_sudo_enabled && planned_operations_require_sudo && [[ -x /usr/bin/sudo ]] && ! sudo_credential_active; then
   trap '/usr/bin/sudo -k' EXIT
 fi
 
@@ -2230,7 +2302,7 @@ if [[ -z "${NONINTERACTIVE-}" ]] && have_planned_actions; then
 fi
 
 # flag for password here if needed
-if sudo_enabled && ! external_sudo_enabled && needs_sudo; then
+if sudo_enabled && ! external_sudo_enabled && planned_operations_require_sudo; then
   if ! sudo_credential_active; then
     log "please enter ${tty_bold}sudo${tty_reset} password:"
   fi
