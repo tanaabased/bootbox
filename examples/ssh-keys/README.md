@@ -32,19 +32,19 @@ HOME="$(pwd)/.tmp/home" bootbox \
 test -d .tmp/home/.ssh
 
 # should protect the ssh directory permissions
-test "$(stat -f '%Lp' .tmp/home/.ssh)" = "700"
+test "$(find .tmp/home/.ssh -prune -perm 700 -print)" = ".tmp/home/.ssh"
 
 # should install the default ssh key filename
 test -f .tmp/home/.ssh/id_test
 
 # should protect the default ssh key permissions
-test "$(stat -f '%Lp' .tmp/home/.ssh/id_test)" = "600"
+test "$(find .tmp/home/.ssh/id_test -prune -perm 600 -print)" = ".tmp/home/.ssh/id_test"
 
 # should install the overridden ssh key filename
 test -f .tmp/home/.ssh/id_test_bootbox
 
 # should protect the overridden ssh key permissions
-test "$(stat -f '%Lp' .tmp/home/.ssh/id_test_bootbox)" = "600"
+test "$(find .tmp/home/.ssh/id_test_bootbox -prune -perm 600 -print)" = ".tmp/home/.ssh/id_test_bootbox"
 
 # should install the default ssh key material that matches the expected public key
 test "$(ssh-keygen -y -f .tmp/home/.ssh/id_test | awk '{print $1 \" \" $2}')" = "$(awk '{print $1 \" \" $2}' id_test.pub)"
