@@ -1,4 +1,4 @@
-# Bootbox Dotpkgs Env Example
+# Dotpkgs Env Example
 
 This example uses the `BOOTBOX_DOTPKG` and `BOOTBOX_TARGET` environment variables to stow multiple
 dot packages into an example-local target directory.

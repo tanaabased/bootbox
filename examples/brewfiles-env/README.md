@@ -1,4 +1,4 @@
-# Bootbox Brewfiles Env Example
+# Brewfiles Env Example
 
 This example uses `BOOTBOX_BREWFILE` and `BOOTBOX_DEBUG` to exercise multi-source Brewfile handling
 with a local Brewfile and a `file://` Brewfile URL, then verifies the requested formulas are

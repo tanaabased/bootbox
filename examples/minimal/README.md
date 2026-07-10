@@ -1,4 +1,4 @@
-# Bootbox Minimal Example
+# Minimal Example
 
 This example is the smallest markdown-first bootstrap test for `bootbox`. It forces `bootbox`'s
 core readiness check into a failing state when Homebrew is already present, then runs the default

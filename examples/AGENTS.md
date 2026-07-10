@@ -16,6 +16,17 @@ specs consumed in CI.
 - Do not capture command output into shell variables just to grep it later. If capture is needed to
   preserve a failing command's status, print the captured output before assertions.
 
+## Example Placement
+
+- `inputs` owns non-mutating public interface checks: help text, displayed defaults, input
+  validation, and option/env precedence.
+- `minimal` owns the smallest bootstrap and core-readiness path.
+- Named domain examples own focused behavior such as Brewfiles, dotpackages, SSH keys, legacy
+  compatibility, and sudo handling. Keep meaningful source or mode suffixes such as `-env` and
+  `-flags` when they represent distinct contracts.
+- Add coverage to the narrowest existing example that owns the behavior. Add a new example only
+  when the behavior needs incompatible setup or would blur an existing domain.
+
 ## Fixtures
 
 - Keep real input fixtures beside the scenario README so each example stays self-contained.

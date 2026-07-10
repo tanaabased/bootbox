@@ -1,4 +1,4 @@
-# Bootbox Dotpkgs Flags Example
+# Dotpkgs Flags Example
 
 This example uses repeated `--dotpkg` flags to stow multiple dot packages into an example-local
 target directory.

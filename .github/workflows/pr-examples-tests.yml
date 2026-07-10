@@ -14,16 +14,16 @@ jobs:
       fail-fast: false
       matrix:
         example:
-          - bootbox-minimal
-          - bootbox-cli-contract
-          - bootbox-dotpkgs-flags
-          - bootbox-dotpkgs-env
-          - bootbox-dotpkgs-force-backup
-          - bootbox-brewfiles-flags
-          - bootbox-brewfiles-env
-          - bootbox-ssh-keys-flags
-          - bootbox-legacy-env-compat
-          - bootbox-external-sudo
+          - minimal
+          - inputs
+          - dotpkgs-flags
+          - dotpkgs-env
+          - dotpkgs-force-backup
+          - brewfiles-flags
+          - brewfiles-env
+          - ssh-keys-flags
+          - legacy-env-compat
+          - external-sudo
     env:
       HOMEBREW_NO_AUTO_UPDATE: '1'
       BOOTBOX_OP_TESTVAULT: ${{ secrets.TANAAB_OP_TESTVAULT }}

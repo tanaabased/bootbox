@@ -1,4 +1,4 @@
-# Bootbox Brewfiles Flags Example
+# Brewfiles Flags Example
 
 This example uses repeated `--brewfile` flags with a local Brewfile and a `file://` Brewfile URL to
 exercise multi-source Brewfile handling under `--debug` and verify the requested formulas are

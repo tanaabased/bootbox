@@ -1,4 +1,4 @@
-# Bootbox External Sudo Example
+# External Sudo Example
 
 This example exercises `bootbox` sudo behavior against a disposable macOS runner with real
 Homebrew, Stow, users, permissions, and sudo state. It verifies caller-managed sudo, standalone

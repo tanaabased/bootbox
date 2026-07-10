@@ -1,4 +1,4 @@
-# Bootbox CLI Contract Example
+# Inputs Example
 
 This example keeps lightweight coverage on the public `bootbox` interface. It validates help,
 version, hidden probes, option precedence display, token masking, and clean argument failures without

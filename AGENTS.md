@@ -52,7 +52,7 @@ When this file conflicts with broader defaults, this file wins for work in `boot
 - When changing option names, environment variables, help text, hidden flags, version output,
   failure wording, debug output, planning output, or status messages, update affected README
   usage/configuration content and Leia examples in the same change.
-- Any `bootbox.sh` public interface change must check `README.md`, `examples/bootbox-cli-contract`,
+- Any `bootbox.sh` public interface change must check `README.md`, `examples/inputs`,
   and the affected mutating examples.
 - Keep `--check-core` hidden from `--help`; it is an intentionally undocumented 0/1 readiness probe
   for `bootbox`'s built-in Homebrew core only.

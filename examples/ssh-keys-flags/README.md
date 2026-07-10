@@ -1,4 +1,4 @@
-# Bootbox SSH Keys Flags Example
+# SSH Keys Flags Example
 
 This example uses repeated `--ssh-key` flags plus a CI-provided 1Password token to install the same
 key twice: once with the default filename and once with a filename override.
