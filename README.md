@@ -4,10 +4,6 @@
 machine for the current user. It installs Homebrew, applies one or more Brewfiles, stows one or more
 dotpackages into the current user's home, and can install private SSH keys from a 1Password vault.
 
-`bootbox` is meant to be a reusable base script that narrower machine profiles can wrap and extend.
-Examples of that pattern include [pirog/me](https://github.com/pirog/me) and
-[tanaabased/agentbox](https://github.com/tanaabased/agentbox).
-
 > Supports macOS 26 or higher and 64-bit Linux on `x64` and `arm64`. CI covers Ubuntu 24.04.
 
 ## Quickstart
@@ -25,12 +21,16 @@ curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | bash
 - It configures only the invoking user's `$HOME`.
 - The normal setup assumes the invoking user can use admin or sudo access if Homebrew must be
   installed.
+- Before installing missing Homebrew on Linux, it requires Git 2.7 or newer, glibc 2.13 or newer, a
+  C compiler (`cc`, `gcc`, or `clang`), `make`, `file`, `ps`, and `bwrap`. Install the equivalent
+  system dependencies for your distribution first; `bootbox` does not invoke a distro package
+  manager.
 - An existing Homebrew installation must be manageable by the invoking user without sudo.
 - For 1Password-backed SSH keys, provide a service account token with `--op-token`,
   `BOOTBOX_OP_TOKEN`, or `OP_SERVICE_ACCOUNT_TOKEN`.
-- `bootbox` currently installs the beta 1Password CLI cask because downstream machine profiles need
-  Environment commands such as `op run --environment`. This should return to stable
-  `1password-cli` once stable 1Password CLI includes that support.
+- `bootbox` currently installs the beta 1Password CLI cask for Environment commands such as
+  `op run --environment`. This should return to stable `1password-cli` once stable 1Password CLI
+  includes that support.
 - The hosted URL serves the generated `dist/bootbox.sh` entrypoint used for releases.
 
 ## User And Homebrew Model
@@ -57,8 +57,6 @@ bootbox --ssh-key "my-vault/id_work" --op-token "$BOOTBOX_OP_TOKEN"
 ```
 
 If you are working from a local checkout instead, replace `bootbox` with `./bootbox.sh`.
-
-If you need help generating a `Brewfile`, see [tanaabased/brewgen](https://github.com/tanaabased/brewgen).
 
 The `examples/` directory contains Leia-backed scenario folders for the main supported flows,
 including multi-Brewfile installs, dotpackage installs, and live 1Password SSH key installation.
@@ -129,9 +127,9 @@ every member with write access can replace executables used by the other members
 [Homebrew FAQ](https://docs.brew.sh/FAQ) and
 [support tiers](https://docs.brew.sh/Support-Tiers) before choosing this model.
 
-The basic pattern used by controlled Agentbox hosts is a dedicated `brewer` group, explicit trusted
-members, and group read/write/traverse access throughout the Homebrew prefix. On macOS, an
-administrator can prepare that pattern with:
+A common manual pattern uses a dedicated `brewer` group, explicit trusted members, and group
+read/write/traverse access throughout the Homebrew prefix. On macOS, an administrator can prepare
+that pattern with:
 
 ```sh
 brew_prefix="$(brew --prefix)"

@@ -27,6 +27,8 @@ set -euo pipefail
 # CONFIG
 MACOS_OLDEST_SUPPORTED="26.0"
 REQUIRED_CURL_VERSION="7.41.0"
+REQUIRED_GIT_VERSION="2.7.0"
+REQUIRED_GLIBC_VERSION="2.13"
 
 abort() {
   printf "error: %s\n" "$@" >&2
@@ -1006,7 +1008,6 @@ finish_noop() {
   exit 0
 }
 
-# shellcheck disable=SC2230
 find_tool() {
   if [[ $# -ne 1 ]]; then
     return 1
@@ -1020,7 +1021,11 @@ find_tool() {
       echo "${executable}"
       break
     fi
-  done < <(which -a "$1")
+  done < <(type -aP "$1")
+}
+
+executable_available() {
+  type -P "$1" >/dev/null 2>&1
 }
 
 # shellcheck disable=SC2329
@@ -1302,6 +1307,75 @@ repair the existing Homebrew installation or run bootbox as its managing user.
 bootbox will not use sudo to repair an existing Homebrew installation.
 EOABORT
 )"
+}
+
+linux_glibc_version() {
+  local getconf_path
+  local glibc_output
+  local ldd_path
+
+  getconf_path="$(type -P getconf || true)"
+  if [[ -n "${getconf_path}" ]]; then
+    glibc_output="$("${getconf_path}" GNU_LIBC_VERSION 2>/dev/null || true)"
+    if [[ "${glibc_output}" =~ ^glibc[[:space:]]+([0-9]+)\.([0-9]+) ]]; then
+      printf "%s.%s" "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+      return 0
+    fi
+  fi
+
+  ldd_path="$(type -P ldd || true)"
+  if [[ -z "${ldd_path}" ]]; then
+    return 1
+  fi
+
+  glibc_output="$("${ldd_path}" --version 2>&1 || true)"
+  glibc_output="${glibc_output%%$'\n'*}"
+  if [[ "${glibc_output}" != *GLIBC* ]] && [[ "${glibc_output}" != *"GNU libc"* ]]; then
+    return 1
+  fi
+  if [[ "${glibc_output}" =~ ([0-9]+)\.([0-9]+) ]]; then
+    printf "%s.%s" "${BASH_REMATCH[1]}" "${BASH_REMATCH[2]}"
+    return 0
+  fi
+
+  return 1
+}
+
+validate_linux_homebrew_prerequisites() {
+  local glibc_version
+  local message
+  local requirement
+  local -a missing_requirements=()
+
+  if [[ -z "$(find_tool git)" ]]; then
+    missing_requirements+=("git ${REQUIRED_GIT_VERSION} or newer")
+  fi
+  if ! executable_available cc && ! executable_available gcc && ! executable_available clang; then
+    missing_requirements+=("a C compiler (cc, gcc, or clang)")
+  fi
+  for requirement in make file ps bwrap; do
+    if ! executable_available "${requirement}"; then
+      missing_requirements+=("${requirement}")
+    fi
+  done
+
+  glibc_version="$(linux_glibc_version || true)"
+  if [[ -z "${glibc_version}" ]] || ! version_compare "${glibc_version}" "${REQUIRED_GLIBC_VERSION}"; then
+    missing_requirements+=("glibc ${REQUIRED_GLIBC_VERSION} or newer")
+  fi
+
+  if [[ "${#missing_requirements[@]}" -eq 0 ]]; then
+    debug "linux Homebrew prerequisites are available"
+    return 0
+  fi
+
+  message="linux Homebrew prerequisites are missing or unusable:"
+  for requirement in "${missing_requirements[@]}"; do
+    message+=$'\n'"- ${requirement}"
+  done
+  message+=$'\n'"install the equivalent system dependencies for your Linux distribution, then rerun bootbox."
+  message+=$'\n'"see https://docs.brew.sh/Homebrew-on-Linux#requirements for upstream requirements."
+  abort_multi "${message}"
 }
 
 queue_core_brew_package() {
@@ -2094,6 +2168,22 @@ test_curl() {
   version_compare "$(major_minor "${curl_name_and_version##* }")" "$(major_minor "${REQUIRED_CURL_VERSION}")"
 }
 
+# shellcheck disable=SC2329
+test_git() {
+  local git_version_output
+
+  if [[ ! -x "$1" ]]; then
+    return 1
+  fi
+
+  git_version_output="$("$1" --version 2>/dev/null)"
+  if [[ "${git_version_output}" =~ git[[:space:]]version[[:space:]]([0-9]+\.[0-9]+) ]]; then
+    version_compare "${BASH_REMATCH[1]}" "$(major_minor "${REQUIRED_GIT_VERSION}")"
+  else
+    return 1
+  fi
+}
+
 # returns true if maj.min a is greater than maj.min b
 version_compare() (
   yy_a="$(echo "$1" | cut -d'.' -f1)"
@@ -2183,6 +2273,20 @@ fi
 validate_temporary_directory
 validate_user_home
 plan_homebrew
+
+if no_sudo_enabled && [[ "${BREW_NEEDS_INSTALL:-0}" == "1" ]]; then
+  abort_multi "$(cat <<EOABORT
+Homebrew is missing and bootbox is running with ${tty_bold}--no-sudo${tty_reset}.
+install Homebrew from a privileged machine-prep layer first, then rerun bootbox without requiring sudo.
+for more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
+EOABORT
+)"
+fi
+
+if [[ "${OS}" == "linux" ]] && [[ "${BREW_NEEDS_INSTALL:-0}" == "1" ]]; then
+  validate_linux_homebrew_prerequisites
+fi
+
 plan_core_homebrew_packages
 plan_brewfiles
 plan_ssh_keys
@@ -2193,15 +2297,6 @@ if ! have_planned_actions; then
 fi
 
 plan_sudo_requirements
-
-if no_sudo_enabled && [[ "${BREW_NEEDS_INSTALL:-0}" == "1" ]]; then
-  abort_multi "$(cat <<EOABORT
-Homebrew is missing and bootbox is running with ${tty_bold}--no-sudo${tty_reset}.
-install Homebrew from a privileged machine-prep layer first, then rerun bootbox without requiring sudo.
-for more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
-EOABORT
-)"
-fi
 
 if planned_operations_require_sudo && external_sudo_enabled; then
   validate_external_sudo_credential

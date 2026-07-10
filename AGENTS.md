@@ -64,6 +64,8 @@ When this file conflicts with broader defaults, this file wins for work in `boot
   or elevate current-user file operations.
 - Keep Bootbox-managed sudo limited to installing missing Homebrew. Existing Homebrew must already
   be manageable by the invoking user through ownership or trusted group access.
+- Keep missing-Homebrew Linux prerequisite checks capability-based and distribution-neutral. Check
+  commands, versions, and glibc before confirmation or sudo; do not invoke a distro package manager.
 - Keep planned-action output aligned with actual execution order.
 
 ## Secrets And Logging
@@ -125,6 +127,8 @@ When this file conflicts with broader defaults, this file wins for work in `boot
   permission changes must never use sudo.
 - Preserve the administrator/sudo eligibility guard for missing Homebrew, but do not probe or prompt
   for sudo when an existing Homebrew installation is manageable by the invoking user.
+- Preserve the early Linux prerequisite gate only for missing Homebrew. Let Homebrew choose between
+  a usable system Ruby and portable Ruby; do not make Ruby an unconditional bootbox prerequisite.
 - Treat shared brew groups as manual, advanced, upstream-unsupported configuration. Document them
   as an external prerequisite; do not add group or Homebrew permission remediation to `bootbox.sh`.
 - Resolve interactive input through `/dev/tty` when available so hosted pipe-to-Bash invocations can

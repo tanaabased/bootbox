@@ -2,11 +2,11 @@
 
 > `bootbox` is a hosted macOS and Linux bootstrap script for Homebrew, Brewfiles, current-user dotpackages, and 1Password-backed SSH key material.
 
-`bootbox` is the reusable upstream bootstrap layer for Tanaab machine-profile wrappers. It owns generic Homebrew core readiness, Brewfile application, current-user dotpackage stowing, and optional private SSH key installation. Sudo is limited to installing missing Homebrew; existing Homebrew must already be manageable by the invoking user. Wrapper-specific machine profiles, agent runtime setup, app onboarding, and privileged host preparation belong in downstream repos such as `me` and `agentbox`.
+`bootbox` provides Homebrew core readiness, Brewfile application, current-user dotpackage stowing, and optional private SSH key installation. Sudo is limited to installing missing Homebrew; existing Homebrew must already be manageable by the invoking user. Missing-Homebrew Linux prerequisites are validated by command, version, and glibc capability without invoking a distro package manager.
 
 ## Primary Resources
 
-- [Hosted bootbox script](https://bootbox.tanaab.sh/bootbox.sh): The generated shell entrypoint for bootstrapping a Mac.
+- [Hosted bootbox script](https://bootbox.tanaab.sh/bootbox.sh): The generated shell entrypoint for bootstrapping a macOS or Linux machine.
 - [GitHub repository](https://github.com/tanaabased/bootbox): Source code, README, workflows, and examples.
 - [README](https://github.com/tanaabased/bootbox#readme): Human setup, usage, configuration, and support guidance.
 - [Releases](https://github.com/tanaabased/bootbox/releases): Published release tags for hosted script updates.
