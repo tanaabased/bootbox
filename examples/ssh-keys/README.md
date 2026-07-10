@@ -17,8 +17,7 @@ chmod 600 .tmp/home/.ssh/id_test
 test -n "$BOOTBOX_OP_TESTVAULT"
 
 # should install the requested ssh keys from 1password
-bootbox \
-  --target "$(pwd)/.tmp/home" \
+HOME="$(pwd)/.tmp/home" bootbox \
   --force \
   --ssh-key "omfsw2uztmi2xqpid5g3kiv6ba/id_test" \
   --ssh-key "omfsw2uztmi2xqpid5g3kiv6ba/id_test:id_test_bootbox" \

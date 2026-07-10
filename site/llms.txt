@@ -1,8 +1,8 @@
 # bootbox
 
-> `bootbox` is a hosted macOS 26.x bootstrap script for Homebrew, Brewfiles, dotpackages, and 1Password-backed SSH key material.
+> `bootbox` is a hosted macOS and Linux bootstrap script for Homebrew, Brewfiles, current-user dotpackages, and 1Password-backed SSH key material.
 
-`bootbox` is the reusable upstream bootstrap layer for Tanaab machine-profile wrappers. It owns generic Homebrew core readiness, Brewfile application, dotpackage stowing, and optional private SSH key installation. Wrapper-specific machine profiles, agent runtime setup, app onboarding, and privileged host preparation belong in downstream repos such as `me`, `emori`, and `agentbox`.
+`bootbox` is the reusable upstream bootstrap layer for Tanaab machine-profile wrappers. It owns generic Homebrew core readiness, Brewfile application, current-user dotpackage stowing, and optional private SSH key installation. Sudo is limited to installing missing Homebrew; existing Homebrew must already be manageable by the invoking user. Wrapper-specific machine profiles, agent runtime setup, app onboarding, and privileged host preparation belong in downstream repos such as `me` and `agentbox`.
 
 ## Primary Resources
 

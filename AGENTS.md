@@ -5,8 +5,8 @@ When this file conflicts with broader defaults, this file wins for work in `boot
 
 ## Purpose
 
-- This repo owns `bootbox`, the reusable upstream macOS 26.x bootstrap layer for Homebrew,
-  Brewfiles, dotpackages, and 1Password-backed SSH key material.
+- This repo owns `bootbox`, the reusable upstream macOS and Linux bootstrap layer for Homebrew,
+  Brewfiles, current-user dotpackages, and 1Password-backed SSH key material.
 - Downstream machine profiles such as `me`, `emori`, and `agentbox` may wrap `bootbox`, but wrapper
   concerns should stay in those repos unless `bootbox`'s generic contract is intentionally changed.
 
@@ -60,6 +60,10 @@ When this file conflicts with broader defaults, this file wins for work in `boot
   inputs example explicitly.
 - Keep `--no-sudo` as a strict no-elevation mode: no sudo probes, prompts, timestamp cleanup, or
   sudo-backed helper operations.
+- Keep `$HOME` as the only SSH-key and dotpackage destination. Do not add a public target override
+  or elevate current-user file operations.
+- Keep Bootbox-managed sudo limited to installing missing Homebrew. Existing Homebrew must already
+  be manageable by the invoking user through ownership or trusted group access.
 - Keep planned-action output aligned with actual execution order.
 
 ## Secrets And Logging
@@ -73,7 +77,7 @@ When this file conflicts with broader defaults, this file wins for work in `boot
 ## Leia Example Style
 
 - Leia examples under `examples/` are CI-owned executable scenarios. They may mutate GitHub-hosted
-  macOS runners, but should not be treated as routine local validation.
+  macOS and Ubuntu runners, but should not be treated as routine local validation.
 - Prefer direct command pipelines, command substitutions, and deterministic inline values over
   writing files just to inspect them later.
 - Do not capture command output into shell variables just to grep it later. Leia failure output must
@@ -98,7 +102,7 @@ When this file conflicts with broader defaults, this file wins for work in `boot
 - Do not treat local `dist/` regeneration as part of normal validation; if build-artifact
   verification matters, say it was deferred to CI.
 - Live 1Password-backed SSH key validation remains CI-owned because it depends on the
-  `BOOTBOX_OP_TESTVAULT` CI environment value on fresh macOS runners.
+  `BOOTBOX_OP_TESTVAULT` CI environment value on fresh runners.
 
 ## Release And Distribution
 
@@ -117,12 +121,18 @@ When this file conflicts with broader defaults, this file wins for work in `boot
   should not be documented outside code or explicit legacy behavior tests.
 - Preserve `--check-core` as a hidden, quiet probe for built-in Homebrew core readiness only.
 - Preserve token masking in debug output and do not reintroduce raw argument logging.
+- Treat `bootbox` as a current-user bootstrap. SSH keys, dotpackages, conflict backups, and home
+  permission changes must never use sudo.
+- Preserve the administrator/sudo eligibility guard for missing Homebrew, but do not probe or prompt
+  for sudo when an existing Homebrew installation is manageable by the invoking user.
+- Treat shared brew groups as manual, advanced, upstream-unsupported configuration. Document them
+  as an external prerequisite; do not add group or Homebrew permission remediation to `bootbox.sh`.
 - Resolve interactive input through `/dev/tty` when available so hosted pipe-to-Bash invocations can
   still confirm the bootbox plan; treat `INTERACTIVE` as a requirement and fail when no interactive
   terminal exists.
 - Keep repeatable CLI inputs replacing env-sourced lists when any corresponding CLI flag is
   provided.
 - Treat empty inline repeatable inputs such as `--brewfile=` or `--ssh-key=` as intentional list
-  clearing; do not treat an empty `--target=` as meaningful.
+  clearing.
 - Prefer targeted edits to `bootbox.sh`; avoid whole-file rewrites unless the script contract is
   being intentionally replaced.

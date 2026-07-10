@@ -29,7 +29,6 @@ bootbox --help | grep -F -- '--brewfile'
 bootbox --help | grep -F -- '--dotpkg'
 bootbox --help | grep -F -- '--ssh-key'
 bootbox --help | grep -F -- '--op-token'
-bootbox --help | grep -F -- '--target'
 bootbox --help | grep -F -- '--version'
 bootbox --help | grep -F -- '--debug'
 bootbox --help | grep -F -- '--quiet'
@@ -42,7 +41,6 @@ bootbox --help | grep -F 'BOOTBOX_BREWFILE same as --brewfile'
 bootbox --help | grep -F 'BOOTBOX_DOTPKG   same as --dotpkg'
 bootbox --help | grep -F 'BOOTBOX_SSH_KEY  same as --ssh-key'
 bootbox --help | grep -F 'BOOTBOX_OP_TOKEN same as --op-token; falls back to OP_SERVICE_ACCOUNT_TOKEN'
-bootbox --help | grep -F 'BOOTBOX_TARGET   same as --target'
 bootbox --help | grep -F 'BOOTBOX_FORCE    same as --force'
 bootbox --help | grep -F 'BOOTBOX_QUIET    same as --quiet'
 bootbox --help | grep -F 'BOOTBOX_NO_SUDO  same as --no-sudo'
@@ -52,6 +50,10 @@ bootbox --help | grep -F 'CI               runs in CI mode and disables prompts'
 
 # should not document legacy environment variables
 if bootbox --help | grep -F 'TANAAB_'; then exit 1; fi
+
+# should not document removed target inputs
+if bootbox --help | grep -F -- '--target'; then exit 1; fi
+if bootbox --help | grep -F 'BOOTBOX_TARGET'; then exit 1; fi
 
 # should not expose a CI option
 if bootbox --help | grep -F -- '--ci'; then exit 1; fi
@@ -114,39 +116,30 @@ BOOTBOX_BREWFILE='Brewfile.env' bootbox --brewfile= --help | grep -F -- '--brewf
 BOOTBOX_BREWFILE='Brewfile.env' bootbox --brewfiles= --help | grep -F -- '--brewfile       installs brewfiles from local paths or URLs [default: none]'
 
 # should use no dotpackages by default
-bootbox --help | grep -F -- '--dotpkg         stows dot packages into target [default: none]'
+bootbox --help | grep -F -- "--dotpkg         stows dot packages into the current user's home [default: none]"
 
 # should use dotpackages from the public environment input
-BOOTBOX_DOTPKG='dotpkgs/env-one,dotpkgs/env-two' bootbox --help | grep -F -- '--dotpkg         stows dot packages into target [default: dotpkgs/env-one,dotpkgs/env-two]'
+BOOTBOX_DOTPKG='dotpkgs/env-one,dotpkgs/env-two' bootbox --help | grep -F -- "--dotpkg         stows dot packages into the current user's home [default: dotpkgs/env-one,dotpkgs/env-two]"
 
 # should let repeated dotpackage options replace environment inputs
-BOOTBOX_DOTPKG='dotpkgs/env' bootbox --dotpkg 'dotpkgs/cli-one' --dotpkg='dotpkgs/cli-two' --help | grep -F -- '--dotpkg         stows dot packages into target [default: dotpkgs/cli-one,dotpkgs/cli-two]'
+BOOTBOX_DOTPKG='dotpkgs/env' bootbox --dotpkg 'dotpkgs/cli-one' --dotpkg='dotpkgs/cli-two' --help | grep -F -- "--dotpkg         stows dot packages into the current user's home [default: dotpkgs/cli-one,dotpkgs/cli-two]"
 
 # should let inline empty dotpackage options clear environment inputs
-BOOTBOX_DOTPKG='dotpkgs/env' bootbox --dotpkg= --help | grep -F -- '--dotpkg         stows dot packages into target [default: none]'
-BOOTBOX_DOTPKG='dotpkgs/env' bootbox --dotpkgs= --help | grep -F -- '--dotpkg         stows dot packages into target [default: none]'
+BOOTBOX_DOTPKG='dotpkgs/env' bootbox --dotpkg= --help | grep -F -- "--dotpkg         stows dot packages into the current user's home [default: none]"
+BOOTBOX_DOTPKG='dotpkgs/env' bootbox --dotpkgs= --help | grep -F -- "--dotpkg         stows dot packages into the current user's home [default: none]"
 
 # should use no SSH keys by default
-bootbox --help | grep -F -- '--ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] [default: none]'
+bootbox --help | grep -F -- "--ssh-key        installs 1password ssh keys into the current user's .ssh as vault/item[:filename] [default: none]"
 
 # should use SSH keys from the public environment input
-BOOTBOX_SSH_KEY='vault/env-one,vault/env-two:id_env_two' bootbox --help | grep -F -- '--ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] [default: vault/env-one,vault/env-two:id_env_two]'
+BOOTBOX_SSH_KEY='vault/env-one,vault/env-two:id_env_two' bootbox --help | grep -F -- "--ssh-key        installs 1password ssh keys into the current user's .ssh as vault/item[:filename] [default: vault/env-one,vault/env-two:id_env_two]"
 
 # should let repeated SSH key options replace environment inputs
-BOOTBOX_SSH_KEY='vault/env' bootbox --ssh-key 'vault/cli-one' --ssh-key='vault/cli-two:id_cli_two' --help | grep -F -- '--ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] [default: vault/cli-one,vault/cli-two:id_cli_two]'
+BOOTBOX_SSH_KEY='vault/env' bootbox --ssh-key 'vault/cli-one' --ssh-key='vault/cli-two:id_cli_two' --help | grep -F -- "--ssh-key        installs 1password ssh keys into the current user's .ssh as vault/item[:filename] [default: vault/cli-one,vault/cli-two:id_cli_two]"
 
 # should let inline empty SSH key options clear environment inputs
-BOOTBOX_SSH_KEY='vault/env' bootbox --ssh-key= --help | grep -F -- '--ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] [default: none]'
-BOOTBOX_SSH_KEY='vault/env' bootbox --ssh-keys= --help | grep -F -- '--ssh-key        installs 1password ssh keys into target .ssh as vault/item[:filename] [default: none]'
-
-# should use HOME as the default target
-HOME='/tmp/bootbox-input-home' bootbox --help | grep -F -- '--target         installs dotpkgs and identities relative to here [default: /tmp/bootbox-input-home]'
-
-# should let the public environment input override the default target
-HOME='/tmp/bootbox-input-home' BOOTBOX_TARGET='/tmp/bootbox-input-env-target' bootbox --help | grep -F -- '--target         installs dotpkgs and identities relative to here [default: /tmp/bootbox-input-env-target]'
-
-# should let the target option override the environment input
-BOOTBOX_TARGET='/tmp/bootbox-input-env-target' bootbox --target '/tmp/bootbox-input-cli-target' --help | grep -F -- '--target         installs dotpkgs and identities relative to here [default: /tmp/bootbox-input-cli-target]'
+BOOTBOX_SSH_KEY='vault/env' bootbox --ssh-key= --help | grep -F -- "--ssh-key        installs 1password ssh keys into the current user's .ssh as vault/item[:filename] [default: none]"
+BOOTBOX_SSH_KEY='vault/env' bootbox --ssh-keys= --help | grep -F -- "--ssh-key        installs 1password ssh keys into the current user's .ssh as vault/item[:filename] [default: none]"
 
 # should use no 1Password token by default
 bootbox --help | grep -F -- '--op-token       auths with 1password service account token [default: none]'
@@ -190,12 +183,10 @@ grep -F 'error: option --brewfile requires a value.' .tmp/missing-brewfile.log
 grep -F 'Usage:' .tmp/missing-brewfile.log
 ! bootbox --op-token > .tmp/missing-op-token.log 2>&1
 grep -F 'error: option --op-token requires a value.' .tmp/missing-op-token.log
-! bootbox --target > .tmp/missing-target.log 2>&1
-grep -F 'error: option --target requires a value.' .tmp/missing-target.log
 
-# should reject an empty target value
-! bootbox --target= > .tmp/empty-target.log 2>&1
-grep -F 'error: option --target must not be empty.' .tmp/empty-target.log
+# should reject the removed target option
+! bootbox --target /tmp/bootbox-input-target > .tmp/target.log 2>&1
+grep -F 'error: unrecognized option --target; see usage above.' .tmp/target.log
 
 # should fail for an unknown option with usage context
 ! bootbox --definitely-bogus > .tmp/invalid.log 2>&1

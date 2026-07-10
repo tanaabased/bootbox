@@ -1,8 +1,8 @@
 # Dotpkgs Example
 
 This example uses repeated `--dotpkg` options to stow multiple dot packages into an example-local
-target directory. It also verifies that `bootbox` automatically backs up a conflicting target file
-before stowing its replacement. Input-source precedence is covered separately by the inputs example.
+home directory. It also verifies that `bootbox` automatically backs up a conflicting home file before
+stowing its replacement. Input-source precedence is covered separately by the inputs example.
 
 ## Setup
 
@@ -15,8 +15,7 @@ cat > .tmp/home/.gitconfig <<'EOF'
 EOF
 
 # should stow the requested dotpkgs
-bootbox \
-  --target "$(pwd)/.tmp/home" \
+HOME="$(pwd)/.tmp/home" bootbox \
   --dotpkg dotpkgs/git \
   --dotpkg dotpkgs/zsh \
   > .tmp/setup.log 2>&1

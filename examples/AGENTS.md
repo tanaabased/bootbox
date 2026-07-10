@@ -55,7 +55,7 @@ specs consumed in CI.
 - Put commands immediately below each `# should ...` line with no blank lines inside the test body.
 - Separate one `# should ...` test from the next with a blank line.
 - Do not add destroy or cleanup sections for runner-local state. Each example runs in its own fresh
-  GitHub-hosted macOS job, and the VM is discarded after the job.
+  GitHub-hosted macOS or Ubuntu job, and the VM is discarded after the job.
 - If examples ever run on persistent infrastructure or mutate shared external state, change the
   execution policy centrally before adding targeted cleanup back to individual scenarios.
 
@@ -65,5 +65,5 @@ specs consumed in CI.
   may mutate the machine.
 - Non-mutating CLI contract checks may be run locally when they are the touched surface and the user
   has not asked to avoid local Leia execution.
-- Mutating runtime examples should be left to GitHub-hosted macOS CI unless the user explicitly asks
-  for local execution.
+- Mutating runtime examples should be left to GitHub-hosted macOS and Ubuntu CI unless the user
+  explicitly asks for local execution.
