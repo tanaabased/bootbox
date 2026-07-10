@@ -49,7 +49,7 @@ fi
 # Always use single-quoted strings with `exp` expressions
 # shellcheck disable=SC2016
 if [[ -n "${INTERACTIVE-}" && -n "${NONINTERACTIVE-}" ]]; then
-  abort 'both `$INTERACTIVE` and `$NONINTERACTIVE` are set. please unset at least one variable and try again.'
+  abort 'both $INTERACTIVE and $NONINTERACTIVE are set. please unset at least one variable and try again.'
 fi
 
 # Check if script is run in POSIX mode

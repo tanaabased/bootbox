@@ -81,7 +81,7 @@ output="$(INTERACTIVE=1 NONINTERACTIVE=1 bootbox --help 2>&1)"
 command_status="$?"
 set -e
 printf "%s\n" "$output"
-printf "%s\n" "$output" | grep -F 'both `$INTERACTIVE` and `$NONINTERACTIVE` are set.'
+printf "%s\n" "$output" | grep -F 'both $INTERACTIVE and $NONINTERACTIVE are set.'
 test "$command_status" -ne 0
 
 # should expose the hidden core check as a quiet 0/1 exit status
