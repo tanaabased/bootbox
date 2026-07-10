@@ -117,6 +117,9 @@ When this file conflicts with broader defaults, this file wins for work in `boot
   should not be documented outside code or explicit legacy behavior tests.
 - Preserve `--check-core` as a hidden, quiet probe for built-in Homebrew core readiness only.
 - Preserve token masking in debug output and do not reintroduce raw argument logging.
+- Resolve interactive input through `/dev/tty` when available so hosted pipe-to-Bash invocations can
+  still confirm the bootbox plan; treat `INTERACTIVE` as a requirement and fail when no interactive
+  terminal exists.
 - Keep repeatable CLI inputs replacing env-sourced lists when any corresponding CLI flag is
   provided.
 - Treat empty inline repeatable inputs such as `--brewfile=` or `--ssh-key=` as intentional list

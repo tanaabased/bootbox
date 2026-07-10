@@ -49,7 +49,7 @@ fi
 # Always use single-quoted strings with `exp` expressions
 # shellcheck disable=SC2016
 if [[ -n "${INTERACTIVE-}" && -n "${NONINTERACTIVE-}" ]]; then
-  abort 'Both `$INTERACTIVE` and `$NONINTERACTIVE` are set. Please unset at least one variable and try again.'
+  abort 'both `$INTERACTIVE` and `$NONINTERACTIVE` are set. please unset at least one variable and try again.'
 fi
 
 # Check if script is run in POSIX mode
@@ -2181,6 +2181,18 @@ fi
 
 ####################################################################### pre-script warnings
 
+interactive_tty_available() {
+  [[ -r /dev/tty && -w /dev/tty ]] || [[ -t 0 ]]
+}
+
+interactive_tty_input() {
+  if [[ -r /dev/tty && -w /dev/tty ]]; then
+    printf "/dev/tty"
+  else
+    printf "/dev/stdin"
+  fi
+}
+
 # Check if script is run non-interactively (e.g. CI)
 # If it is run non-interactively we should not prompt for passwords.
 # Always use single-quoted strings with `exp` expressions
@@ -2189,13 +2201,15 @@ if [[ -z "${NONINTERACTIVE-}" ]]; then
   if [[ -n "${CI-}" ]]; then
     warn 'running in non-interactive mode because `$CI` is set.'
     NONINTERACTIVE=1
-  elif [[ ! -t 0 ]]; then
+  elif ! interactive_tty_available; then
     if [[ -z "${INTERACTIVE-}" ]];  then
-      warn 'running in non-interactive mode because `stdin` is not a TTY.'
+      warn 'running in non-interactive mode because no interactive terminal is available.'
       NONINTERACTIVE=1
     else
-      warn 'running in interactive mode despite `stdin` not being a TTY because `$INTERACTIVE` is set.'
+      abort "cannot run interactive mode because no interactive terminal is available."
     fi
+  elif [[ ! -t 0 ]]; then
+    debug "${tty_tp}using${tty_reset} ${tty_ts}/dev/tty${tty_reset} for interactive input because \`stdin\` is not a tty."
   fi
 else
   log "${tty_tp}running${tty_reset} in ${tty_ts}non-interactive mode${tty_reset} ${tty_dim}because \$NONINTERACTIVE is set${tty_reset}"
@@ -2204,11 +2218,14 @@ fi
 ####################################################################### script
 
 getc() {
+  local input_path
   local save_state
-  save_state="$(/bin/stty -g)"
-  /bin/stty raw -echo
-  IFS='' read -r -n 1 -d '' "$@"
-  /bin/stty "${save_state}"
+
+  input_path="$(interactive_tty_input)"
+  save_state="$(/bin/stty -g < "${input_path}")"
+  /bin/stty raw -echo < "${input_path}"
+  IFS='' read -r -n 1 -d '' "$@" < "${input_path}"
+  /bin/stty "${save_state}" < "${input_path}"
 }
 
 execute() {
@@ -2235,8 +2252,8 @@ execute_sudo() {
 wait_for_user() {
   local c
 
-# Trap to clean up on Ctrl-C or exit
-  trap 'stty sane; tput sgr0; echo; exit 1' SIGINT
+  # Trap to clean up on Ctrl-C or exit
+  trap 'if [[ -r /dev/tty ]]; then /bin/stty sane < /dev/tty; else /bin/stty sane; fi; tput sgr0; echo; exit 1' SIGINT
 
   echo
   echo "press ${tty_bold}RETURN${tty_reset}/${tty_bold}ENTER${tty_reset} to continue or any other key to abort:"

@@ -66,6 +66,24 @@ if bootbox --help | grep -F -- '--external-sudo'; then exit 1; fi
 # should print a version string
 test -n "$(bootbox --version)"
 
+# should reject force-interactive mode in CI
+set +e
+output="$(CI=1 INTERACTIVE=1 bootbox --help 2>&1)"
+command_status="$?"
+set -e
+printf "%s\n" "$output"
+printf "%s\n" "$output" | grep -F "cannot run force-interactive mode in CI."
+test "$command_status" -ne 0
+
+# should reject contradictory interactive controls
+set +e
+output="$(INTERACTIVE=1 NONINTERACTIVE=1 bootbox --help 2>&1)"
+command_status="$?"
+set -e
+printf "%s\n" "$output"
+printf "%s\n" "$output" | grep -F 'both `$INTERACTIVE` and `$NONINTERACTIVE` are set.'
+test "$command_status" -ne 0
+
 # should expose the hidden core check as a quiet 0/1 exit status
 bootbox --check-core > .tmp/check-core.log 2>&1 || test "$?" -eq 1
 test ! -s .tmp/check-core.log
