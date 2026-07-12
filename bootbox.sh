@@ -29,7 +29,6 @@ MACOS_OLDEST_SUPPORTED="26.0"
 REQUIRED_CURL_VERSION="7.41.0"
 REQUIRED_GIT_VERSION="2.7.0"
 REQUIRED_GLIBC_VERSION="2.13"
-REQUIRED_SUDO_VERSION="1.9.12"
 INHERITED_PATH="${PATH-}"
 
 abort() {
@@ -183,7 +182,6 @@ DEBUG="$(env_value BOOTBOX_DEBUG TANAAB_DEBUG "${DEBUG:-${RUNNER_DEBUG:-}}")"
 FORCE="$(env_value BOOTBOX_FORCE TANAAB_FORCE)"
 QUIET="$(env_value BOOTBOX_QUIET TANAAB_QUIET)"
 NO_SUDO="${BOOTBOX_NO_SUDO:-}"
-EXTERNAL_SUDO="${BOOTBOX_EXTERNAL_SUDO:-}"
 CHECK_CORE=""
 TARGET="${HOME:-}"
 BREWFILES_CSV="$(env_list_value BOOTBOX_BREWFILE BOOTBOX_BREWFILES TANAAB_BREWFILE TANAAB_BREWFILES)"
@@ -871,14 +869,6 @@ no_sudo_enabled() {
   value_enabled "${NO_SUDO:-}"
 }
 
-external_sudo_enabled() {
-  value_enabled "${EXTERNAL_SUDO:-}"
-}
-
-sudo_enabled() {
-  ! no_sudo_enabled
-}
-
 check_core_mode() {
   [[ "${CHECK_CORE:-0}" == "1" ]]
 }
@@ -944,7 +934,6 @@ debug raw BREWFILES="$(array_join "," BREWFILES)"
 debug raw DOTPKGS="$(array_join "," DOTPKGS)"
 debug raw DEBUG="$DEBUG"
 debug raw FORCE="$FORCE"
-debug raw EXTERNAL_SUDO="$EXTERNAL_SUDO"
 debug raw SSH_KEYS="$(array_join "," SSH_KEYS)"
 debug raw OP_TOKEN="$(op_token_for_display)"
 debug raw HOMEBREW_PREFIX="$HOMEBREW_PREFIX"
@@ -957,7 +946,6 @@ debug raw TMPDIR="$BOOTBOX_TMPDIR"
 #######################################################################  tool-verification
 
 # precautions
-unset HAVE_SUDO_ACCESS
 unset BREW
 unset OP_CLI
 unset BREW_NEEDS_INSTALL
@@ -971,7 +959,6 @@ unset DOTPKG_BACKUP_DIR
 unset STOW
 
 declare -a PLANNED_ACTIONS=()
-declare -a PLANNED_SUDO_REASONS=()
 declare -a CORE_BREW_FORMULAS_TO_INSTALL=()
 declare -a CORE_BREW_CASKS_TO_INSTALL=()
 declare -a CORE_BREW_CASK_DISPLAY_TO_INSTALL=()
@@ -1108,33 +1095,14 @@ validate_user_home() {
   fi
 }
 
-plan_sudo_requirement() {
-  append_unique_array_value PLANNED_SUDO_REASONS "$1"
+homebrew_install_planned() {
+  [[ "${BREW_NEEDS_INSTALL:-0}" == "1" ]]
 }
 
-planned_operations_require_sudo() {
-  [[ "${#PLANNED_SUDO_REASONS[@]}" -gt 0 ]]
-}
-
-planned_sudo_reasons() {
-  array_join "; " PLANNED_SUDO_REASONS
-}
-
-plan_sudo_requirements() {
-  local reason
-
-  PLANNED_SUDO_REASONS=()
-
-  if [[ "${BREW_NEEDS_INSTALL:-0}" == "1" ]]; then
-    plan_sudo_requirement "Homebrew installation may require elevation"
-  fi
-
-  if planned_operations_require_sudo; then
-    for reason in "${PLANNED_SUDO_REASONS[@]}"; do
-      debug "sudo required: ${reason}"
-    done
+debug_sudo_plan() {
+  if homebrew_install_planned; then
+    debug "sudo may be required: Homebrew installation"
   elif [[ -n "${BREWFILES_NEED_INSTALL:-}" ]] \
-    && [[ "${BREW_NEEDS_INSTALL:-0}" != "1" ]] \
     && [[ "${#CORE_BREW_DISPLAY_TO_INSTALL[@]}" -eq 0 ]] \
     && [[ -z "${SSH_KEYS_NEED_INSTALL:-}" ]] \
     && [[ -z "${DOTPKGS_NEED_STOW:-}" ]]; then
@@ -1168,119 +1136,8 @@ find_homebrew() {
   find_tool brew
 }
 
-user_is_macos_admin() {
-  [[ " $(/usr/bin/id -Gn) " == *" admin "* ]]
-}
-
-user_is_linux_sudoer() {
-  local groups
-
-  groups=" $(/usr/bin/id -Gn) "
-  [[ "${groups}" == *" sudo "* ]] || [[ "${groups}" == *" wheel "* ]]
-}
-
-user_appears_sudo_capable() {
-  if [[ "${OS}" == "macos" ]]; then
-    user_is_macos_admin
-  else
-    user_is_linux_sudoer
-  fi
-}
-
-have_sudo_access() {
-  if no_sudo_enabled; then
-    HAVE_SUDO_ACCESS="1"
-    return 1
-  fi
-
-  if [[ -n "${HAVE_SUDO_ACCESS-}" ]]; then
-    return "${HAVE_SUDO_ACCESS}"
-  fi
-
-  if external_sudo_enabled; then
-    if sudo_credential_active; then
-      HAVE_SUDO_ACCESS="0"
-    else
-      HAVE_SUDO_ACCESS="1"
-    fi
-    return "${HAVE_SUDO_ACCESS}"
-  fi
-
-  if [[ ! -x "/usr/bin/sudo" ]]; then
-    HAVE_SUDO_ACCESS="1"
-  elif sudo_credential_active || user_appears_sudo_capable; then
-    HAVE_SUDO_ACCESS="0"
-  else
-    HAVE_SUDO_ACCESS="1"
-  fi
-
-  if [[ "${HAVE_SUDO_ACCESS}" == "1" ]]; then
-    debug "${USER} does not appear to have sudo access!"
-  else
-    debug "${USER} has sudo access"
-  fi
-
-  return "${HAVE_SUDO_ACCESS}"
-}
-
 sudo_credential_active() {
-  [[ -x "/usr/bin/sudo" ]] && /usr/bin/sudo -N -n -v >/dev/null 2>&1
-}
-
-sudo_version() {
-  local sudo_version_output
-
-  sudo_version_output="$(LC_ALL=C /usr/bin/sudo -V 2>/dev/null || true)"
-  sudo_version_output="${sudo_version_output%%$'\n'*}"
-  if [[ "${sudo_version_output}" =~ ^Sudo[[:space:]]version[[:space:]]([0-9]+\.[0-9]+\.[0-9]+) ]]; then
-    printf "%s" "${BASH_REMATCH[1]}"
-    return 0
-  fi
-
-  return 1
-}
-
-validate_sudo_version() {
-  local installed_sudo_version
-
-  if [[ ! -x "/usr/bin/sudo" ]]; then
-    return 0
-  fi
-
-  installed_sudo_version="$(sudo_version || true)"
-  if [[ -z "${installed_sudo_version}" ]]; then
-    abort_multi "$(cat <<EOABORT
-could not determine the sudo version at /usr/bin/sudo.
-sudo ${REQUIRED_SUDO_VERSION} or newer is required when bootbox installs Homebrew.
-upgrade sudo or install Homebrew from a privileged machine-prep layer first.
-EOABORT
-)"
-  fi
-
-  if ! version_compare_three_part "${installed_sudo_version}" "${REQUIRED_SUDO_VERSION}"; then
-    abort_multi "$(cat <<EOABORT
-sudo ${REQUIRED_SUDO_VERSION} or newer is required when bootbox installs Homebrew.
-found sudo ${installed_sudo_version} at /usr/bin/sudo.
-upgrade sudo or install Homebrew from a privileged machine-prep layer first.
-EOABORT
-)"
-  fi
-
-  debug "sudo ${installed_sudo_version} satisfies the ${REQUIRED_SUDO_VERSION} minimum"
-}
-
-validate_external_sudo_credential() {
-  if sudo_credential_active; then
-    HAVE_SUDO_ACCESS="0"
-    return 0
-  fi
-
-  abort_multi "$(cat <<EOABORT
-bootbox external sudo mode requires an active sudo credential.
-the planned operation requires elevation: $(planned_sudo_reasons).
-the calling process must run sudo -v and maintain the credential before invoking bootbox.
-EOABORT
-)"
+  [[ -x "/usr/bin/sudo" ]] && /usr/bin/sudo -n -v >/dev/null 2>&1
 }
 
 load_homebrew_shellenv() {
@@ -2306,33 +2163,6 @@ version_compare() (
   return 0
 )
 
-version_compare_three_part() {
-  local actual_major actual_minor actual_patch
-  local required_major required_minor required_patch
-
-  if [[ ! "$1" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
-    return 1
-  fi
-  actual_major=$((10#${BASH_REMATCH[1]}))
-  actual_minor=$((10#${BASH_REMATCH[2]}))
-  actual_patch=$((10#${BASH_REMATCH[3]}))
-
-  if [[ ! "$2" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
-    return 1
-  fi
-  required_major=$((10#${BASH_REMATCH[1]}))
-  required_minor=$((10#${BASH_REMATCH[2]}))
-  required_patch=$((10#${BASH_REMATCH[3]}))
-
-  if ((actual_major != required_major)); then
-    ((actual_major > required_major))
-  elif ((actual_minor != required_minor)); then
-    ((actual_minor > required_minor))
-  else
-    ((actual_patch >= required_patch))
-  fi
-}
-
 if check_core_mode; then
   run_check_core
 fi
@@ -2387,14 +2217,6 @@ EOABORT
   fi
 fi
 
-if external_sudo_enabled && no_sudo_enabled; then
-  abort_multi "$(cat <<EOABORT
-BOOTBOX_EXTERNAL_SUDO=1 cannot be combined with ${tty_bold}--no-sudo${tty_reset} or BOOTBOX_NO_SUDO=1.
-choose either caller-managed sudo or no sudo, not both.
-EOABORT
-)"
-fi
-
 validate_temporary_directory
 validate_user_home
 plan_homebrew
@@ -2421,18 +2243,12 @@ if ! have_planned_actions; then
   finish_noop
 fi
 
-plan_sudo_requirements
+debug_sudo_plan
 
-if planned_operations_require_sudo && sudo_enabled; then
-  validate_sudo_version
-fi
-
-if planned_operations_require_sudo && external_sudo_enabled; then
-  validate_external_sudo_credential
-elif planned_operations_require_sudo && ! have_sudo_access; then
+if homebrew_install_planned && [[ ! -x "/usr/bin/sudo" ]]; then
   abort_multi "$(cat <<EOABORT
-${tty_bold}${USER}${tty_reset} cannot complete the planned operation without ${tty_bold}sudo${tty_reset}: $(planned_sudo_reasons).
-rerun setup as an administrator or sudo-capable user, or install Homebrew from a privileged machine-prep layer first.
+Homebrew is missing and sudo is not available at /usr/bin/sudo.
+install Homebrew from a privileged machine-prep layer first, then rerun bootbox.
 for more information on advanced usage rerun with --help or check out: ${tty_underline}${tty_magenta}https://github.com/tanaabased/bootbox${tty_reset}
 EOABORT
 )"
@@ -2494,18 +2310,29 @@ execute() {
   fi
 }
 
-execute_sudo() {
+authorize_homebrew_sudo() {
   local -a args=("$@")
-  if sudo_enabled && [[ "${EUID:-${UID}}" != "0" ]] && have_sudo_access; then
-    if external_sudo_enabled; then
-      args=("-n" "${args[@]}")
-    elif [[ -n "${SUDO_ASKPASS-}" ]]; then
-      args=("-A" "${args[@]}")
-    fi
-    execute "/usr/bin/sudo" "${args[@]}"
-  else
-    execute "${args[@]}"
+
+  if [[ -n "${SUDO_ASKPASS-}" ]]; then
+    args=("-A" "${args[@]}")
+  elif [[ -n "${NONINTERACTIVE-}" ]]; then
+    args=("-n" "${args[@]}")
   fi
+
+  debug "${tty_tp}running${tty_reset}" "/usr/bin/sudo" "${args[@]}"
+  if "/usr/bin/sudo" "${args[@]}"; then
+    return 0
+  fi
+
+  if [[ -n "${NONINTERACTIVE-}" && -z "${SUDO_ASKPASS-}" ]]; then
+    abort_multi "$(cat <<EOABORT
+Homebrew installation requires reusable non-interactive sudo authorization.
+provide passwordless or already-active sudo, or install Homebrew from a privileged machine-prep layer first.
+EOABORT
+)"
+  fi
+
+  abort "could not authorize sudo for Homebrew installation."
 }
 
 wait_for_user() {
@@ -2565,16 +2392,6 @@ auto_chmod() {
   execute chmod "${mode}" "$path"
 }
 
-# Inspect standalone sudo state once so bootbox can preserve a pre-existing credential.
-SUDO_CREDENTIAL_ACTIVE_BEFORE_BOOTBOX=""
-if sudo_enabled && ! external_sudo_enabled && planned_operations_require_sudo && [[ -x /usr/bin/sudo ]]; then
-  if sudo_credential_active; then
-    SUDO_CREDENTIAL_ACTIVE_BEFORE_BOOTBOX="1"
-  else
-    trap '/usr/bin/sudo -k' EXIT
-  fi
-fi
-
 # Things can fail later if `pwd` doesn't exist.
 # Also sudo prints a warning message for no good reason
 cd "/usr" || exit 1
@@ -2585,12 +2402,20 @@ if [[ -z "${NONINTERACTIVE-}" ]] && have_planned_actions; then
   wait_for_user
 fi
 
-# flag for password here if needed
-if sudo_enabled && ! external_sudo_enabled && planned_operations_require_sudo; then
-  if [[ -z "${SUDO_CREDENTIAL_ACTIVE_BEFORE_BOOTBOX}" ]]; then
+# Authorize the only operation bootbox permits to use sudo.
+if homebrew_install_planned; then
+  SUDO_CREDENTIAL_ACTIVE_BEFORE_BOOTBOX=""
+  if sudo_credential_active; then
+    SUDO_CREDENTIAL_ACTIVE_BEFORE_BOOTBOX="1"
+  else
+    trap '/usr/bin/sudo -k' EXIT
+  fi
+  if [[ -z "${SUDO_CREDENTIAL_ACTIVE_BEFORE_BOOTBOX}" ]] \
+    && [[ -z "${NONINTERACTIVE-}" ]] \
+    && [[ -z "${SUDO_ASKPASS-}" ]]; then
     log "${tty_tp}enter${tty_reset} your ${tty_ts}admin password${tty_reset} ${tty_dim}when prompted to continue${tty_reset}."
   fi
-  execute_sudo true
+  authorize_homebrew_sudo true
 fi
 
 if [[ "${BREW_NEEDS_INSTALL:-0}" == "1" ]]; then

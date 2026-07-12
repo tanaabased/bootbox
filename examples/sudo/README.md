@@ -36,7 +36,7 @@ brew uninstall --formula --force tree >/dev/null 2>&1 || true
 # should let a brewfile-only plan use existing Homebrew without bootbox sudo validation
 set -o pipefail
 sudo -k
-HOME="$TMPDIR/bootbox-sudo/home" BOOTBOX_EXTERNAL_SUDO=1 BOOTBOX_DEBUG=1 \
+HOME="$TMPDIR/bootbox-sudo/home" BOOTBOX_DEBUG=1 \
 bootbox --brewfile "$(pwd)/Brewfile" \
   2>&1 | awk '
   { print }
@@ -90,14 +90,4 @@ printf "%s\n" "$output" | grep -F 'cannot be managed by nobody'
 printf "%s\n" "$output" | grep -F 'bootbox will not use sudo to repair an existing Homebrew installation.'
 if printf "%s\n" "$output" | grep -F 'has sudo access'; then exit 1; fi
 if printf "%s\n" "$output" | grep -F 'enter your admin password when prompted to continue'; then exit 1; fi
-
-# should reject contradictory sudo modes before mutation
-set +e
-output="$(BOOTBOX_EXTERNAL_SUDO=1 BOOTBOX_NO_SUDO=1 \
-  bootbox --brewfile= 2>&1)"
-command_status="$?"
-set -e
-printf "%s\n" "$output"
-test "$command_status" -ne 0
-printf "%s\n" "$output" | grep -F 'BOOTBOX_EXTERNAL_SUDO=1 cannot be combined with --no-sudo or BOOTBOX_NO_SUDO=1.'
 ```

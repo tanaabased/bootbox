@@ -61,7 +61,7 @@ if bootbox --help | grep -F -- '--ci'; then exit 1; fi
 # should keep the hidden core check out of help output
 if bootbox --help | grep -F -- '--check-core'; then exit 1; fi
 
-# should keep internal external sudo controls out of help output
+# should keep removed external sudo controls out of help output
 if bootbox --help | grep -F 'BOOTBOX_EXTERNAL_SUDO'; then exit 1; fi
 if bootbox --help | grep -F -- '--external-sudo'; then exit 1; fi
 

@@ -125,8 +125,9 @@ When this file conflicts with broader defaults, this file wins for work in `boot
 - Preserve token masking in debug output and do not reintroduce raw argument logging.
 - Treat `bootbox` as a current-user bootstrap. SSH keys, dotpackages, conflict backups, and home
   permission changes must never use sudo.
-- Preserve the administrator/sudo eligibility guard for missing Homebrew, but do not probe or prompt
-  for sudo when an existing Homebrew installation is manageable by the invoking user.
+- Authorize sudo only after showing the interactive plan, use `sudo -n` under `NONINTERACTIVE` or
+  `CI`, and do not probe or prompt when an existing Homebrew installation is manageable by the
+  invoking user.
 - Preserve the early Linux prerequisite gate only for missing Homebrew. Let Homebrew choose between
   a usable system Ruby and portable Ruby; do not make Ruby an unconditional bootbox prerequisite.
 - Treat shared brew groups as manual, advanced, upstream-unsupported configuration. Document them

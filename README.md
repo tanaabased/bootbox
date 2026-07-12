@@ -22,8 +22,9 @@ curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | bash
 - It configures only the invoking user's `$HOME`.
 - The normal setup assumes the invoking user can use admin or sudo access if Homebrew must be
   installed.
-- When Homebrew is missing, sudo 1.9.12 or newer is required unless `--no-sudo` is used to hand
-  installation responsibility to another machine-prep layer.
+- When Homebrew is missing, interactive runs may prompt for sudo after showing the plan.
+  `NONINTERACTIVE` and `CI` runs use only non-prompting sudo authorization and fail when it is not
+  already available.
 - `bootbox` does not edit shell startup files. After installing Homebrew, it prints a shell setup
   reminder only when Homebrew's `bin` directory was not already in `PATH` and the relevant startup
   file does not already contain the required `brew shellenv` line.

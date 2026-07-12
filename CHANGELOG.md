@@ -1,5 +1,31 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
+### New Features
+
+- Added 64-bit Linux support on `x64` and `arm64` with canonical Linuxbrew prefix detection. ([#11](https://github.com/tanaabased/bootbox/pull/11))
+- Added a current-user execution model that keeps Brewfiles, SSH keys, and dotpackages sudo-free. ([#11](https://github.com/tanaabased/bootbox/pull/11))
+- Added conditional shell setup reminders after fresh Homebrew installs without editing startup files. ([#11](https://github.com/tanaabased/bootbox/pull/11))
+- Added distribution-neutral Linux checks for Git 2.7+, glibc 2.13+, a compiler, `make`, `file`, and `ps`. ([#11](https://github.com/tanaabased/bootbox/pull/11))
+
+### Breaking Changes
+
+- Removed `--target`, `BOOTBOX_TARGET`, and legacy target overrides; user files now always use `$HOME`. ([#11](https://github.com/tanaabased/bootbox/pull/11))
+- Removed internal `BOOTBOX_EXTERNAL_SUDO`; `NONINTERACTIVE` and `CI` now reuse sudo without prompting. ([#11](https://github.com/tanaabased/bootbox/pull/11))
+- Required existing Homebrew installations to be user-manageable; bootbox no longer repairs them with sudo. ([#11](https://github.com/tanaabased/bootbox/pull/11))
+
+### Bug Fixes
+
+- Fixed `--check-core` to report unready when Homebrew exists but is not manageable by the current user. ([#11](https://github.com/tanaabased/bootbox/pull/11))
+- Fixed fresh Linux Homebrew installs to skip `/snap/bin/curl` when another compatible cURL is available. ([#11](https://github.com/tanaabased/bootbox/pull/11))
+- Fixed interactive pipe-to-Bash confirmations to read from `/dev/tty` when available. ([#11](https://github.com/tanaabased/bootbox/pull/11))
+- Fixed invalid `INTERACTIVE`, `NONINTERACTIVE`, and `CI` combinations to fail before mutation. ([#11](https://github.com/tanaabased/bootbox/pull/11))
+- Fixed noninteractive sudo authorization to use `sudo -n` and fail instead of prompting. ([#11](https://github.com/tanaabased/bootbox/pull/11))
+- Fixed ownership and permission validation for `$HOME`, SSH destinations, and dotpackage conflicts. ([#11](https://github.com/tanaabased/bootbox/pull/11))
+
+### Developer Notes
+
+- Expanded Leia contract coverage across macOS 26 and Ubuntu 24.04, including fresh Homebrew installs. ([#11](https://github.com/tanaabased/bootbox/pull/11))
+
 ## v1.0.0-beta.8 - [July 10, 2026](https://github.com/tanaabased/bootbox/releases/tag/v1.0.0-beta.8)
 
 - Fixed `sudo` credential checks so they only run when planned operations require elevated file helpers.
