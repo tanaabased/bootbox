@@ -8,22 +8,23 @@ permissions:
 
 jobs:
   examples:
-    name: ${{ matrix.example }}
-    runs-on: macos-26
+    name: ${{ matrix.example }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os:
+          - macos-26
+          - ubuntu-24.04
         example:
-          - bootbox-minimal
-          - bootbox-cli-contract
-          - bootbox-dotpkgs-flags
-          - bootbox-dotpkgs-env
-          - bootbox-dotpkgs-force-backup
-          - bootbox-brewfiles-flags
-          - bootbox-brewfiles-env
-          - bootbox-ssh-keys-flags
-          - bootbox-legacy-env-compat
-          - bootbox-external-sudo
+          - inputs
+          - defaults
+          - homebrew
+          - brewfiles
+          - dotpkgs
+          - ssh-keys
+          - legacy
+          - sudo
     env:
       HOMEBREW_NO_AUTO_UPDATE: '1'
       BOOTBOX_OP_TESTVAULT: ${{ secrets.TANAAB_OP_TESTVAULT }}
@@ -47,12 +48,14 @@ jobs:
       - name: Create bootbox alias for Leia examples
         shell: bash
         run: ln -sf bootbox.sh dist/bootbox
-      - name: Put prepared bootbox on PATH
+      - name: Put prepared tools on PATH
         shell: bash
-        run: echo "$PWD/dist" >> "$GITHUB_PATH"
+        run: |
+          echo "$PWD/dist" >> "$GITHUB_PATH"
+          echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
       - name: Run Leia-backed example
         shell: bash
         run: |
           brew update
           mkdir -p examples/.tmp
-          TMPDIR="$PWD/examples/.tmp" ./node_modules/.bin/leia "examples/${{ matrix.example }}/README.md" -c "Destroy tests" --stdin
+          TMPDIR="$PWD/examples/.tmp" ./node_modules/.bin/leia "examples/${{ matrix.example }}/README.md" --stdin --retry 0

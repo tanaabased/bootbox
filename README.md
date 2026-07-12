@@ -1,74 +1,65 @@
-# bootbox
+# `bootbox`
 
-`bootbox` is a hosted bootstrap script for macOS 26 or newer that turns a fresh box into a usable
-base machine. It installs Homebrew, applies one or more Brewfiles, stows one or more dotpackages,
-and can install private SSH keys from a 1Password vault.
+<p align="center">
+  <img src="./assets/bootbox.png" alt="bootbox" width="180" />
+</p>
 
-`bootbox` is meant to be a reusable base script that narrower machine profiles can wrap and extend.
-Examples of that pattern include [pirog/me](https://github.com/pirog/me),
-[tanaabased/agentbox](https://github.com/tanaabased/agentbox), and
-[tanaabased/emori](https://github.com/tanaabased/emori).
+<p align="center">
+  <a href="https://github.com/tanaabased/bootbox/releases"><img src="https://img.shields.io/github/v/release/tanaabased/bootbox?include_prereleases&sort=semver" alt="Latest release" /></a>
+  <a href="https://app.netlify.com/projects/tanaab-bootbox-sh/deploys"><img src="https://api.netlify.com/api/v1/badges/a0a7d3ee-3e74-4ecf-99ca-a952163b889e/deploy-status" alt="Netlify Status" /></a>
+  <img src="https://img.shields.io/badge/macOS-26%2B-111827" alt="macOS 26+" />
+  <img src="https://img.shields.io/badge/Linux-x64%20%7C%20arm64-00c88a" alt="Linux x64 and arm64" />
+</p>
 
-> Supports macOS 26 or higher on `x64` and `arm64`.
+`bootbox` is a hosted bootstrap script for taking a fresh macOS or Linux machine to a usable
+current-user foundation. It installs or uses Homebrew, applies Brewfiles, stows dotpackages into
+`$HOME`, and can install private SSH keys from 1Password.
+
+> Supports macOS 26 or newer and 64-bit Linux on `x64` and `arm64`. CI covers Ubuntu 24.04.
+
+## Overview
+
+At a high level, `bootbox`:
+
+- installs Homebrew into the platform's canonical prefix when it is missing
+- installs the core Git, cURL, Zsh, jq, GNU Stow, and beta 1Password CLI toolchain
+- applies one or more local or remote Brewfiles
+- stows one or more dotpackages into the invoking user's `$HOME`
+- optionally installs private SSH keys from a 1Password vault
+
+Homebrew commands and current-user configuration run without sudo. Only missing Homebrew
+installation may require elevation, and an existing Homebrew installation must already be
+manageable by the invoking user.
+
+For platform requirements, installed-component details, and the complete configuration contract,
+see [ADVANCED.md](./ADVANCED.md).
 
 ## Quickstart
 
+Run the hosted bootstrap:
+
 ```sh
-curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | bash
+/bin/bash -c "$(curl -fsSL https://bootbox.tanaab.sh/bootbox.sh)" bootbox
 ```
 
-## Installation
+Pass options directly after the `bootbox` command placeholder when selecting additional inputs:
 
-`bootbox` is designed to be run directly from the hosted script at
-`https://bootbox.tanaab.sh/bootbox.sh`.
+```sh
+/bin/bash -c "$(curl -fsSL https://bootbox.tanaab.sh/bootbox.sh)" bootbox \
+  --brewfile Brewfile.work \
+  --dotpkg dotpkgs/git
+```
 
-- It requires Bash and cURL to start.
-- It supports installing into the default home directory target or a custom `--target`.
-- For 1Password-backed SSH keys, provide a service account token with `--op-token`,
-  `BOOTBOX_OP_TOKEN`, or `OP_SERVICE_ACCOUNT_TOKEN`.
-- `bootbox` currently installs the beta 1Password CLI cask because downstream machine profiles need
-  Environment commands such as `op run --environment`. This should return to stable
-  `1password-cli` once stable 1Password CLI includes that support.
-- The hosted URL serves the generated `dist/bootbox.sh` entrypoint used for releases.
+Run the hosted help directly for the complete option and environment-variable contract:
+
+```sh
+/bin/bash -c "$(curl -fsSL https://bootbox.tanaab.sh/bootbox.sh)" bootbox --help
+```
 
 ## Usage
 
-The main flow is: choose a target machine, decide which Brewfiles and dotpackages you want, and then
-run `bootbox` once to converge the box into that state. If you have installed the hosted script as a
-local `bootbox` command, the common flows look like this:
-
-```sh
-bootbox --brewfile Brewfile.work --target "$HOME"
-bootbox --dotpkg dotpkgs/git --dotpkg dotpkgs/zsh --target "$HOME"
-bootbox --ssh-key "my-vault/id_work" --op-token "$BOOTBOX_OP_TOKEN"
-```
-
-If you are working from a local checkout instead, replace `bootbox` with `./bootbox.sh`.
-
-If you need help generating a `Brewfile`, see [tanaabased/brewgen](https://github.com/tanaabased/brewgen).
-
-The `examples/` directory contains Leia-backed scenario folders for the main supported flows,
-including multi-Brewfile installs, dotpackage installs, and live 1Password SSH key installation.
-
-## Configuration
-
-`bootbox` keeps its configuration surface intentionally small.
-
-- `BOOTBOX_BREWFILE`: comma-separated Brewfile paths or URLs
-- `BOOTBOX_DOTPKG`: comma-separated dotpackage paths
-- `BOOTBOX_SSH_KEY`: comma-separated `vault/item[:filename]` SSH key specs
-- `BOOTBOX_OP_TOKEN`: 1Password service account token
-- `BOOTBOX_TARGET`: install target directory
-- `BOOTBOX_FORCE`: enables supported overwrite behavior
-- `BOOTBOX_QUIET`: suppresses `bootbox` status output for wrapper callers
-- `BOOTBOX_NO_SUDO`: disables sudo checks, prompts, and elevation
-- `BOOTBOX_DEBUG`: enables debug logging
-- `NONINTERACTIVE` and `CI`: disable prompts for automated runs
-
-## Advanced
-
-If you want a reusable local command instead of piping the hosted script every time, install it into
-a directory that is already in your `PATH` or one you manage yourself.
+For repeated use, install the hosted script as a local command in a directory you manage on
+`PATH`:
 
 ```sh
 mkdir -p "$HOME/.local/bin"
@@ -76,52 +67,49 @@ curl -fsSL https://bootbox.tanaab.sh/bootbox.sh -o "$HOME/.local/bin/bootbox"
 chmod +x "$HOME/.local/bin/bootbox"
 
 bootbox --help
-bootbox --brewfile Brewfile.work --dotpkg dotpkgs/git --target "$HOME"
-bootbox --ssh-key "my-vault/id_work:id_ed25519_work" --op-token "$BOOTBOX_OP_TOKEN"
 ```
 
-If you do not want to install a local command first, you can also set environment variables inline
-and pipe the hosted script straight into Bash.
+Run it with flags when you want to keep the selected behavior explicit:
 
 ```sh
-curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | BOOTBOX_BREWFILE="Brewfile.work" BOOTBOX_TARGET="$HOME" bash
-curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | BOOTBOX_DOTPKG="dotpkgs/git,dotpkgs/zsh" BOOTBOX_TARGET="$HOME" bash
-curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | BOOTBOX_SSH_KEY="my-vault/id_work:id_work" BOOTBOX_OP_TOKEN="$BOOTBOX_OP_TOKEN" bash
+bootbox --brewfile Brewfile.work --dotpkg dotpkgs/git
+
+bootbox \
+  --ssh-key "my-vault/id_work:id_ed25519_work" \
+  --op-token "$BOOTBOX_OP_TOKEN"
 ```
 
-For the complete and current documented CLI surface, prefer `--help`. That output is the fastest
-source of truth for supported public flags, environment variables, and guardrails.
+Common inputs:
 
-For scripts that only need to know whether `bootbox`'s built-in Homebrew base is already satisfied,
-there is also a hidden `--check-core` flag. It exits `0` when Homebrew plus `bootbox`'s core
-packages are already installed, and exits `1` otherwise. It intentionally stays out of `--help`,
-and it does not check Brewfile entries, dotpackages, SSH keys, or target permissions.
+| Option       | Environment variable | Description                                                       |
+| ------------ | -------------------- | ----------------------------------------------------------------- |
+| `--brewfile` | `BOOTBOX_BREWFILE`   | Repeatable local path or URL for Homebrew Bundle input.           |
+| `--dotpkg`   | `BOOTBOX_DOTPKG`     | Repeatable GNU Stow package applied to the current user's home.   |
+| `--ssh-key`  | `BOOTBOX_SSH_KEY`    | Repeatable `vault/item[:filename]` private SSH-key specification. |
+| `--op-token` | `BOOTBOX_OP_TOKEN`   | 1Password service account token used for private SSH-key access.  |
+| `--yes`      | `NONINTERACTIVE`     | Accept the plan and run without interactive prompts.              |
+| `--force`    | `BOOTBOX_FORCE`      | Allow supported existing SSH-key destinations to be overwritten.  |
+| `--debug`    | `BOOTBOX_DEBUG`      | Show detailed diagnostics with the 1Password token masked.        |
 
-```sh
-if bootbox --check-core >/dev/null 2>&1; then
-  echo "bootbox core is ready"
-else
-  echo "bootbox core is missing dependencies"
-fi
-```
+CLI options override environment inputs. The first occurrence of a repeatable CLI option replaces
+its environment-sourced list, and later occurrences append.
 
-Wrapper scripts that already know sudo is unavailable can pass `--no-sudo` or
-`BOOTBOX_NO_SUDO=1`. In that mode `bootbox` does not probe, prompt for, or invoke sudo; requested
-work must already be writable by the current user.
+Use [ADVANCED.md#configuration-reference](./ADVANCED.md#configuration-reference) for every public
+option, environment variable, default, and input rule.
 
 ## Development
 
-`bootbox` uses Bun for its repo-local tooling and publishes a Netlify-ready `dist/` directory.
+This repository uses Bun for repo-local tooling and publishes a Netlify-ready `dist/` directory:
 
 ```sh
+git clone https://github.com/tanaabased/bootbox.git
+cd bootbox
 bun install
 bun run lint
-bun run build
 ```
 
-The example suite is intentionally not exposed as a local package script. Leia examples are run in
-GitHub Actions on fresh macOS runners because they can mutate machine state, install Homebrew
-packages, and access the `BOOTBOX_OP_TESTVAULT` CI environment value for the live SSH-key example.
+`bun run build` and Leia scenarios are CI-owned by default because they generate `dist/` or
+mutate macOS and Ubuntu runner state.
 
 ## Issues, Questions and Support
 
@@ -135,7 +123,7 @@ See [`CHANGELOG.md`](./CHANGELOG.md) for release history and
 
 ## Maintainers
 
-- `@pirog`
+- [@pirog](https://github.com/pirog)
 
 ## Contributors
 
