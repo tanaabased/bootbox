@@ -1,5 +1,7 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
+## v1.0.0-beta.9 - [July 12, 2026](https://github.com/tanaabased/bootbox/releases/tag/v1.0.0-beta.9)
+
 ### New Features
 
 - Added 64-bit Linux support on `x64` and `arm64` with canonical Linuxbrew prefix detection. ([#11](https://github.com/tanaabased/bootbox/pull/11))

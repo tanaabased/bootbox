@@ -1,7 +1,7 @@
 {
   "name": "@tanaab/bootbox",
   "description": "Hosted macOS and Linux bootstrap script for Homebrew, dotpackages, and SSH keys.",
-  "version": "1.0.0-beta.8",
+  "version": "1.0.0-beta.9",
   "author": "Mike Pirog @pirog",
   "license": "MIT",
   "repository": {
