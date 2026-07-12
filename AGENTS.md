@@ -1,143 +1,149 @@
 # Repo Guidance For `bootbox`
 
-Apply broader or global Codex guidance first, then apply this repo-local file.
-When this file conflicts with broader defaults, this file wins for work in `bootbox`.
+This root file should stay broadly applicable to repository work. Put narrower policy closer to the
+files it governs, such as `examples/AGENTS.md` for Leia examples.
 
 ## Purpose
 
-- This repo owns `bootbox`, the reusable upstream macOS and Linux bootstrap layer for Homebrew,
-  Brewfiles, current-user dotpackages, and 1Password-backed SSH key material.
-- Downstream machine profiles such as `me`, `emori`, and `agentbox` may wrap `bootbox`, but wrapper
-  concerns should stay in those repos unless `bootbox`'s generic contract is intentionally changed.
+`bootbox` is the reusable upstream macOS and Linux bootstrap layer for Homebrew, Brewfiles,
+current-user dotpackages, and 1Password-backed SSH key material. Downstream machine profiles such as
+`me`, `emori`, and `agentbox` may wrap it, but wrapper-specific behavior belongs in those
+repositories unless the generic `bootbox` contract is intentionally changed.
 
-## Source Of Truth
+## Scope
 
-- [`bootbox.sh`](/Users/pirog/tanaab/bootbox/bootbox.sh) is the source shell entrypoint and main
-  bootstrap surface.
-- [`README.md`](/Users/pirog/tanaab/bootbox/README.md) is the human-facing setup, usage, and support
-  surface.
-- [`examples/**/README.md`](/Users/pirog/tanaab/bootbox/examples) files are Leia-backed executable
-  contract specs consumed in CI.
-- [`dist/`](/Users/pirog/tanaab/bootbox/dist) is generated publish output for Netlify hosting and
-  release preparation.
-- [`scripts/build-dist.js`](/Users/pirog/tanaab/bootbox/scripts/build-dist.js),
-  [`site/`](/Users/pirog/tanaab/bootbox/site), `netlify.toml`, release workflows, and committed
-  `dist/` files own the hosted-script publishing surface.
+In scope:
 
-## Naming And Style
+- Homebrew installation and built-in core readiness on supported macOS and Linux systems.
+- Applying local or remote Brewfiles as the invoking user.
+- Stowing current-user dotpackages into `$HOME`.
+- Installing 1Password-backed private SSH keys into `$HOME/.ssh`.
+- Hosted-script, Netlify metadata, release, and Leia-backed executable contract surfaces.
 
-- In markdown and docs prose, stylize this project as `bootbox`.
-- Markdown H1 titles in `examples/**/README.md` may capitalize the leading `B` when the title
-  starts with the project name.
-- Preserve literal identifiers exactly as written, including commands, paths, URLs, environment
-  variables, labels, generated strings, repository names, and fixture values.
+Out of scope:
 
-## Build Artifacts
+- Persona-, workspace-, or machine-profile-specific behavior owned by downstream wrappers.
+- Privileged host configuration, service supervision, SSH daemon hardening, or remote-access policy.
+- Distribution-specific package-manager invocation or automatic Linux prerequisite installation.
+- Homebrew group creation, permission repair, or unsupported multi-user ownership management.
+- Automatic shell startup-file edits or configuration of another user's home.
 
-- Do not edit, regenerate, stage, or commit files under `dist/` during local agent work.
-- `dist/` is CI/release-owned output. GitHub Actions may regenerate and stamp it during build,
-  test, release, or hosting workflows.
-- Make source changes in `bootbox.sh`, `site/`, or `scripts/build-dist.js`; leave `dist/`
-  unchanged unless the user explicitly asks for a local generated-artifact update.
-- Treat `bootbox.sh` as the source entrypoint and `dist/bootbox.sh` as the release-shaped hosted
-  artifact prepared by build and release workflows.
-- Preserve the source script's single top-level `SCRIPT_VERSION` assignment pattern so release
-  stamping with `version-injector` keeps working.
-- Do not run `bun run build` locally unless the user explicitly asks for local generated-output
-  verification. Prefer GitHub Actions for build/release artifact validation.
+## Direction
 
-## CLI Contract
+This is directional guidance, not an expansion of the current public contract:
 
-- Keep `--help` as the public CLI contract surface.
-- When changing option names, environment variables, help text, hidden flags, version output,
-  failure wording, debug output, planning output, or status messages, update affected README
-  usage/configuration content and Leia examples in the same change.
-- Any `bootbox.sh` public interface change must check `README.md`, `examples/inputs`,
-  and the affected mutating examples.
-- Keep `--check-core` hidden from `--help`; it is an intentionally undocumented 0/1 readiness probe
-  for `bootbox`'s built-in Homebrew core only.
-- Keep `--check-core` quiet under normal operation; if its behavior changes, update the CLI
-  inputs example explicitly.
-- Keep `--no-sudo` as a strict no-elevation mode: no sudo probes, prompts, timestamp cleanup, or
-  sudo-backed helper operations.
-- Keep `$HOME` as the only SSH-key and dotpackage destination. Do not add a public target override
-  or elevate current-user file operations.
-- Keep Bootbox-managed sudo limited to installing missing Homebrew. Existing Homebrew must already
-  be manageable by the invoking user through ownership or trusted group access.
-- Keep missing-Homebrew Linux prerequisite checks capability-based and distribution-neutral. Check
-  commands, versions, and glibc before confirmation or sudo; do not invoke a distro package manager.
-- Keep planned-action output aligned with actual execution order.
+- Keep the hosted shell entrypoint as the primary bootstrap path.
+- Keep `bootbox` narrow, current-user-oriented, and reusable by downstream wrappers.
+- Prefer capability checks and platform-native Homebrew behavior over distribution-specific setup.
+- Add new privileged, multi-user, or machine-profile behavior only when the product contract is
+  explicitly expanded.
 
-## Secrets And Logging
+## Source Map
 
-- Never print raw 1Password service account credentials in debug, help, or error output.
-- Mask token-bearing values from `--op-token`, `BOOTBOX_OP_TOKEN`, legacy `TANAAB_OP_TOKEN`, and
-  `OP_SERVICE_ACCOUNT_TOKEN` when they appear in any diagnostic surface.
-- Preserve the repo's CLI color conventions for status verbs and targets; use the established
-  Tanaab styles rather than ad hoc color choices for action labels such as `running`.
+- `bootbox.sh`: source shell entrypoint and main bootstrap contract.
+- `README.md`: primary setup and common-usage entrypoint.
+- `ADVANCED.md`: installed components, platform behavior, complete public configuration reference,
+  and shared Homebrew guidance.
+- `examples/**/README.md`: Leia-backed executable CI contracts.
+- `site/llms.txt`, `scripts/build-dist.js`, and `netlify.toml`: hosted metadata and distribution
+  publishing sources.
+- `assets/`: repository-facing visual assets used by documentation.
+- `dist/`: generated Netlify and release output owned by CI and release workflows.
 
-## Leia Example Style
+## Critical Rules
 
-- Leia examples under `examples/` are CI-owned executable scenarios. They may mutate GitHub-hosted
-  macOS and Ubuntu runners, but should not be treated as routine local validation.
-- Prefer direct command pipelines, command substitutions, and deterministic inline values over
-  writing files just to inspect them later.
-- Do not capture command output into shell variables just to grep it later. Leia failure output must
-  surface useful stdout/stderr in CI; prefer direct commands or a focused `awk` check that prints
-  each input line while tracking assertion state.
-- Treat each blank-line-separated Leia block as a separate script. Do not rely on shell variables,
-  functions, or working-directory changes persisting across `should` blocks.
-- Use `TMPDIR` for durable fixtures, unavoidable logs, and helper internals only.
-
-## Validation Policy
-
-- Prefer the narrowest reliable checks for the touched surface.
-- For routine local validation, use `bun run lint`.
-- For shell changes, start with the narrowest relevant check such as `shellcheck bootbox.sh` or
-  `bun run lint:shellcheck`.
-- Run `git diff --check` when whitespace or generated text churn is plausible.
-- Run `bun install` when dependencies are missing before linting, and keep `bun.lock` as a tracked
-  dependency artifact when Bun updates it.
-- Do not run `bootbox.sh`, `dist/bootbox.sh`, or Leia examples as routine local validation unless
-  the user explicitly asks for local execution. Non-mutating help checks are acceptable when a
-  README/development task specifically calls for them.
-- Do not treat local `dist/` regeneration as part of normal validation; if build-artifact
-  verification matters, say it was deferred to CI.
-- Live 1Password-backed SSH key validation remains CI-owned because it depends on the
-  `BOOTBOX_OP_TESTVAULT` CI environment value on fresh runners.
-
-## Release And Distribution
-
-- Netlify publishes committed `dist/`, but local agents should not update it directly; CI/release
-  workflows own generated `dist/` changes.
-- Release workflows use the `bootbox`-style shell-script distribution flow. Keep `dist/bootbox.sh` as
-  the stamped hosted entrypoint.
-- Do not add unrelated package archives or upload behavior unless the release contract explicitly
-  changes.
-- Generated hosting changes should check `scripts/build-dist.js`, `site/`, `dist/`, `netlify.toml`,
-  and release workflow assumptions together.
+- Style the project, repository, and CLI name as lowercase `bootbox` in prose and user-facing
+  output. Example H1 titles may capitalize the leading `B` when the title begins with the project
+  name.
+- Preserve literal identifiers exactly, including commands, paths, URLs, environment variables,
+  labels, generated strings, repository names, and fixture values.
+- Do not edit, regenerate, stage, or commit `dist/` during routine local work. Change source inputs
+  and leave generated output to CI unless the user explicitly requests release-shaped verification.
+- Do not run `bun run build` locally unless the user explicitly asks for generated-output
+  verification.
+- Preserve the source script's single top-level `SCRIPT_VERSION` assignment so release stamping
+  with `version-injector` keeps working.
+- Keep `/llms.txt` concise in `site/llms.txt`; `scripts/build-dist.js` copies it into `dist/`.
+- Keep `--help` as the public CLI contract. Public option, environment-variable, help, planning,
+  status, debug, or failure-text changes must check `README.md`, `ADVANCED.md`,
+  `site/llms.txt`, and affected examples.
+- Do not document hidden development, compatibility, or CI-only inputs as public configuration.
+- Preserve the public `BOOTBOX_*` namespace. Legacy `TANAAB_*` support is compatibility-only and
+  should appear only in code or explicit legacy behavior tests.
+- Never print raw 1Password service account credentials. Mask token-bearing values from
+  `--op-token`, `BOOTBOX_OP_TOKEN`, legacy `TANAAB_OP_TOKEN`, and
+  `OP_SERVICE_ACCOUNT_TOKEN` in every diagnostic surface.
+- Preserve the established Tanaab CLI colors and action-label styles rather than introducing
+  one-off output conventions.
 
 ## `bootbox.sh` Invariants
 
-- Preserve the public `BOOTBOX_*` namespace. Legacy `TANAAB_*` support is compatibility-only and
-  should not be documented outside code or explicit legacy behavior tests.
-- Preserve `--check-core` as a hidden, quiet probe for built-in Homebrew core readiness only.
-- Preserve token masking in debug output and do not reintroduce raw argument logging.
-- Treat `bootbox` as a current-user bootstrap. SSH keys, dotpackages, conflict backups, and home
-  permission changes must never use sudo.
-- Authorize sudo only after showing the interactive plan, use `sudo -n` under `NONINTERACTIVE` or
-  `CI`, and do not probe or prompt when an existing Homebrew installation is manageable by the
-  invoking user.
-- Preserve the early Linux prerequisite gate only for missing Homebrew. Let Homebrew choose between
-  a usable system Ruby and portable Ruby; do not make Ruby an unconditional bootbox prerequisite.
-- Treat shared brew groups as manual, advanced, upstream-unsupported configuration. Document them
-  as an external prerequisite; do not add group or Homebrew permission remediation to `bootbox.sh`.
-- Resolve interactive input through `/dev/tty` when available so hosted pipe-to-Bash invocations can
-  still confirm the bootbox plan; treat `INTERACTIVE` as a requirement and fail when no interactive
-  terminal exists.
-- Keep repeatable CLI inputs replacing env-sourced lists when any corresponding CLI flag is
-  provided.
+- Keep `--check-core` hidden from `--help`. It is an intentionally undocumented, quiet 0/1 probe
+  for built-in Homebrew core readiness only.
+- Keep `--no-sudo` strict: no sudo probes, prompts, timestamp cleanup, or elevation.
+- Keep `$HOME` as the only SSH-key and dotpackage destination. Do not add a public target override
+  or elevate current-user file operations.
+- Keep sudo limited to installing missing Homebrew. Existing Homebrew must already be manageable by
+  the invoking user through ownership or trusted group access.
+- Authorize sudo only after showing the interactive plan. Use `sudo -n` under `NONINTERACTIVE` or
+  `CI`, and do not probe or prompt when existing Homebrew is manageable.
+- Keep missing-Homebrew Linux prerequisite checks capability-based and distribution-neutral. Check
+  commands, versions, and glibc before confirmation or sudo; never invoke a distro package manager.
+- Let Homebrew choose between a usable system Ruby and portable Ruby. Do not make Ruby or Bubblewrap
+  an unconditional `bootbox` prerequisite.
+- Treat shared Homebrew groups as manual, advanced, upstream-unsupported configuration. Do not add
+  group or permission remediation to `bootbox.sh`.
+- Never edit shell startup files. Print only the conditional post-install `brew shellenv` reminder.
+- Resolve interactive input through `/dev/tty` when available so hosted pipe-to-Bash invocations
+  can confirm the plan. Treat `INTERACTIVE` as a requirement and fail when no interactive terminal
+  exists.
+- Keep repeatable CLI inputs replacing environment-sourced lists when any corresponding CLI flag is
+  supplied.
 - Treat empty inline repeatable inputs such as `--brewfile=` or `--ssh-key=` as intentional list
   clearing.
+- Keep planned-action output aligned with actual execution order.
 - Prefer targeted edits to `bootbox.sh`; avoid whole-file rewrites unless the script contract is
-  being intentionally replaced.
+  intentionally replaced.
+
+## Examples And Leia
+
+- Examples are executable Leia specs consumed in CI, not prose-only documentation.
+- Keep `examples/inputs` non-mutating; it owns the public CLI contract, displayed defaults, input
+  validation, precedence, and list-clearing behavior.
+- Keep named domain examples focused on defaults, Homebrew installation, Brewfiles, dotpackages,
+  SSH keys, sudo boundaries, and legacy compatibility.
+- Mutating scenarios may run on GitHub-hosted macOS and Ubuntu runners but should not be treated as
+  routine local validation.
+- Do not rely on state persisting across blank-line-separated Leia blocks.
+- Keep diagnostic output visible in CI; prefer direct pipelines or focused `awk` checks that print
+  each input line while tracking assertion state.
+- See `examples/AGENTS.md` before editing example scenarios or fixtures.
+
+## Release And Distribution
+
+- Netlify publishes committed `dist/`, while CI and release workflows own generated changes.
+- `bootbox.sh` is the source entrypoint; `dist/bootbox.sh` is the stamped hosted artifact.
+- Release workflows use the shell-script distribution flow and should not gain unrelated archives or
+  upload behavior unless the release contract changes.
+- Generated hosting changes should check `scripts/build-dist.js`, `site/`, `dist/`,
+  `netlify.toml`, and release workflow assumptions together.
+
+## Validation
+
+- Prefer the narrowest reliable checks for the touched surface.
+- Use `bun run lint` for routine local validation and `git diff --check` when text churn is
+  plausible.
+- For shell changes, start with `bun run lint:shellcheck` or the narrowest equivalent check.
+- Run `bun install` when dependencies are missing and keep `bun.lock` when Bun updates it.
+- Do not run `bootbox.sh`, `dist/bootbox.sh`, or mutating Leia examples as routine local
+  validation unless the user explicitly asks. Non-mutating help checks are acceptable for CLI or
+  documentation work.
+- Treat `bun run build`, generated `dist/` verification, and live 1Password-backed SSH-key
+  scenarios as CI-owned unless explicitly requested.
+- When build, Leia, or live secret-backed verification is intentionally skipped, say so plainly.
+
+## References
+
+- `README.md`, `ADVANCED.md`, `CHANGELOG.md`
+- `examples/`, `examples/AGENTS.md`
+- `site/llms.txt`, `scripts/build-dist.js`, `netlify.toml`

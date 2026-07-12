@@ -1,13 +1,20 @@
-# bootbox
+# `bootbox`
 
-> `bootbox` is a hosted macOS and Linux bootstrap script for Homebrew, Brewfiles, current-user dotpackages, and 1Password-backed SSH key material.
+> `bootbox` is a hosted macOS and Linux bootstrap script for Homebrew, Brewfiles, current-user dotpackages, and 1Password-backed SSH keys.
 
-`bootbox` provides Homebrew core readiness, Brewfile application, current-user dotpackage stowing, and optional private SSH key installation. Sudo is limited to installing missing Homebrew; existing Homebrew must already be manageable by the invoking user. Missing-Homebrew Linux prerequisites are validated by command, version, and glibc capability without invoking a distro package manager.
+`bootbox` takes a fresh supported machine to a reusable current-user foundation. Its primary entrypoint is `bootbox.sh` at `https://bootbox.tanaab.sh/bootbox.sh`.
+
+It installs or uses Homebrew, makes the built-in Git, cURL, Zsh, jq, GNU Stow, and beta 1Password CLI core available, applies local or remote Brewfiles, stows dotpackages into `$HOME`, and optionally installs private SSH keys from 1Password.
+
+`bootbox` supports macOS 26 or newer and 64-bit Linux on `x64` and `arm64`; CI covers Ubuntu 24.04. Sudo is limited to missing Homebrew installation. Existing Homebrew must already be manageable by the invoking user, and SSH keys, dotpackages, conflict backups, and home-directory operations never elevate.
+
+The advanced reference covers installed components, platform requirements, the complete option and environment-variable contract, current-user and sudo behavior, shell setup guidance, and manual shared Homebrew access.
 
 ## Primary Resources
 
-- [Hosted bootbox script](https://bootbox.tanaab.sh/bootbox.sh): The generated shell entrypoint for bootstrapping a macOS or Linux machine.
-- [GitHub repository](https://github.com/tanaabased/bootbox): Source code, README, workflows, and examples.
-- [README](https://github.com/tanaabased/bootbox#readme): Human setup, usage, configuration, and support guidance.
+- [Hosted bootbox script](https://bootbox.tanaab.sh/bootbox.sh): Generated shell entrypoint for bootstrapping a macOS or Linux machine.
+- [README source](https://raw.githubusercontent.com/tanaabased/bootbox/main/README.md): Primary quickstart, common usage, development, and project links.
+- [Advanced source](https://raw.githubusercontent.com/tanaabased/bootbox/main/ADVANCED.md): Installed components, platform behavior, complete configuration reference, and shared Homebrew guidance.
+- [GitHub repository](https://github.com/tanaabased/bootbox): Source code, canonical documentation, workflows, and executable examples.
 - [Releases](https://github.com/tanaabased/bootbox/releases): Published release tags for hosted script updates.
 - [Issues](https://github.com/tanaabased/bootbox/issues): Bug reports, regressions, and feature requests.
