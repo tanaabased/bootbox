@@ -2428,5 +2428,8 @@ install_ssh_keys
 install_dotpkgs
 show_homebrew_shellenv_reminder
 
+log
+log "bootbox setup ${tty_green}succeeded${tty_reset}"
+
 # FIN!
 exit 0

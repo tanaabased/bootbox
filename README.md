@@ -79,6 +79,9 @@ bootbox \
   --op-token "$BOOTBOX_OP_TOKEN"
 ```
 
+Successful runs that apply changes finish with `bootbox setup succeeded`. Use `--quiet` when a
+wrapper should suppress normal status output, including that final success message.
+
 Common inputs:
 
 | Option       | Environment variable | Description                                                       |

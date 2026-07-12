@@ -1,5 +1,7 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
+- Added a final `bootbox setup succeeded` status message after successful non-quiet runs.
+
 ## v1.0.0-beta.9 - [July 12, 2026](https://github.com/tanaabased/bootbox/releases/tag/v1.0.0-beta.9)
 
 ### New Features

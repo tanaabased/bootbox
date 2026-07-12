@@ -21,6 +21,9 @@ brew uninstall --formula --force stow watch
 # should run the default bootstrap successfully
 bootbox 2>&1 | tee .tmp/setup.log
 
+# should report successful setup completion
+grep -F 'bootbox setup ' .tmp/setup.log | grep -F 'succeeded'
+
 # should report that the built-in core readiness check passes after setup
 bootbox --check-core
 

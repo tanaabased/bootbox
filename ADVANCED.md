@@ -234,6 +234,7 @@ directory.
 | Description | Suppresses normal `bootbox` status output. |
 
 Quiet mode is intended for wrapper callers. Debug output and failures remain visible on stderr.
+It also suppresses the final `bootbox setup succeeded` status message.
 
 ### `--no-sudo`
 
