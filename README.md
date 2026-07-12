@@ -17,10 +17,16 @@ curl -fsSL https://bootbox.tanaab.sh/bootbox.sh | bash
 `bootbox` is designed to be run directly from the hosted script at
 `https://bootbox.tanaab.sh/bootbox.sh`.
 
-- It requires Bash and cURL to start.
+- It requires Bash and cURL 7.41 or newer to start. Homebrew cannot use cURL installed through
+  Snap, so Linux systems must provide a non-Snap cURL.
 - It configures only the invoking user's `$HOME`.
 - The normal setup assumes the invoking user can use admin or sudo access if Homebrew must be
   installed.
+- When Homebrew is missing, sudo 1.9.12 or newer is required unless `--no-sudo` is used to hand
+  installation responsibility to another machine-prep layer.
+- `bootbox` does not edit shell startup files. After installing Homebrew, it prints a shell setup
+  reminder only when Homebrew's `bin` directory was not already in `PATH` and the relevant startup
+  file does not already contain the required `brew shellenv` line.
 - Before installing missing Homebrew on Linux, it requires Git 2.7 or newer, glibc 2.13 or newer, a
   C compiler (`cc`, `gcc`, or `clang`), `make`, `file`, and `ps`. Install the equivalent system
   dependencies for your distribution first; `bootbox` does not invoke a distro package manager.

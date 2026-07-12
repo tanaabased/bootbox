@@ -29,6 +29,8 @@ MACOS_OLDEST_SUPPORTED="26.0"
 REQUIRED_CURL_VERSION="7.41.0"
 REQUIRED_GIT_VERSION="2.7.0"
 REQUIRED_GLIBC_VERSION="2.13"
+REQUIRED_SUDO_VERSION="1.9.12"
+INHERITED_PATH="${PATH-}"
 
 abort() {
   printf "error: %s\n" "$@" >&2
@@ -1225,6 +1227,48 @@ sudo_credential_active() {
   [[ -x "/usr/bin/sudo" ]] && /usr/bin/sudo -N -n -v >/dev/null 2>&1
 }
 
+sudo_version() {
+  local sudo_version_output
+
+  sudo_version_output="$(LC_ALL=C /usr/bin/sudo -V 2>/dev/null || true)"
+  sudo_version_output="${sudo_version_output%%$'\n'*}"
+  if [[ "${sudo_version_output}" =~ ^Sudo[[:space:]]version[[:space:]]([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+    printf "%s" "${BASH_REMATCH[1]}"
+    return 0
+  fi
+
+  return 1
+}
+
+validate_sudo_version() {
+  local installed_sudo_version
+
+  if [[ ! -x "/usr/bin/sudo" ]]; then
+    return 0
+  fi
+
+  installed_sudo_version="$(sudo_version || true)"
+  if [[ -z "${installed_sudo_version}" ]]; then
+    abort_multi "$(cat <<EOABORT
+could not determine the sudo version at /usr/bin/sudo.
+sudo ${REQUIRED_SUDO_VERSION} or newer is required when bootbox installs Homebrew.
+upgrade sudo or install Homebrew from a privileged machine-prep layer first.
+EOABORT
+)"
+  fi
+
+  if ! version_compare_three_part "${installed_sudo_version}" "${REQUIRED_SUDO_VERSION}"; then
+    abort_multi "$(cat <<EOABORT
+sudo ${REQUIRED_SUDO_VERSION} or newer is required when bootbox installs Homebrew.
+found sudo ${installed_sudo_version} at /usr/bin/sudo.
+upgrade sudo or install Homebrew from a privileged machine-prep layer first.
+EOABORT
+)"
+  fi
+
+  debug "sudo ${installed_sudo_version} satisfies the ${REQUIRED_SUDO_VERSION} minimum"
+}
+
 validate_external_sudo_credential() {
   if sudo_credential_active; then
     HAVE_SUDO_ACCESS="0"
@@ -1452,8 +1496,59 @@ install_homebrew() {
   if ! load_homebrew_shellenv "${BREW}"; then
     abort_unloadable_homebrew
   fi
+  HOMEBREW_INSTALLED_BY_BOOTBOX="1"
   log "${tty_bold}installed${tty_reset} ${tty_green}homebrew${tty_reset}"
   debug "using Homebrew at ${BREW}"
+}
+
+resolve_homebrew_shell_setup() {
+  HOMEBREW_SHELLENV_SUFFIX=""
+
+  case "${SHELL-}" in
+    */bash*)
+      HOMEBREW_SHELLENV_SUFFIX=" bash"
+      if [[ "${OS}" == "linux" ]]; then
+        HOMEBREW_SHELL_RCFILE="${TARGET}/.bashrc"
+      else
+        HOMEBREW_SHELL_RCFILE="${TARGET}/.bash_profile"
+      fi
+      ;;
+    */zsh*)
+      HOMEBREW_SHELLENV_SUFFIX=" zsh"
+      if [[ "${OS}" == "linux" ]]; then
+        HOMEBREW_SHELL_RCFILE="${ZDOTDIR:-"${TARGET}"}/.zshrc"
+      else
+        HOMEBREW_SHELL_RCFILE="${ZDOTDIR:-"${TARGET}"}/.zprofile"
+      fi
+      ;;
+    */fish*)
+      HOMEBREW_SHELLENV_SUFFIX=" fish"
+      HOMEBREW_SHELL_RCFILE="${TARGET}/.config/fish/config.fish"
+      ;;
+    *)
+      HOMEBREW_SHELL_RCFILE="${ENV:-"${TARGET}/.profile"}"
+      ;;
+  esac
+}
+
+show_homebrew_shellenv_reminder() {
+  if [[ "${HOMEBREW_INSTALLED_BY_BOOTBOX:-0}" != "1" ]]; then
+    return 0
+  fi
+  if PATH="${INHERITED_PATH}" type -P brew >/dev/null 2>&1; then
+    return 0
+  fi
+
+  resolve_homebrew_shell_setup
+  if [[ -f "${HOMEBREW_SHELL_RCFILE}" ]] &&
+    grep -qs "eval \"\$(${HOMEBREW_PREFIX}/bin/brew shellenv[^\"]*)\"" "${HOMEBREW_SHELL_RCFILE}"; then
+    return 0
+  fi
+
+  log
+  log "${tty_bold}add Homebrew to future shells${tty_reset}"
+  log "add this line to ${tty_ts}${HOMEBREW_SHELL_RCFILE}${tty_reset}:"
+  log "  ${tty_green}eval \"\$(${HOMEBREW_PREFIX}/bin/brew shellenv${HOMEBREW_SHELLENV_SUFFIX})\"${tty_reset}"
 }
 
 plan_core_homebrew_packages() {
@@ -2161,6 +2256,9 @@ test_curl() {
   if [[ ! -x "$1" ]]; then
     return 1
   fi
+  if [[ "$1" == "/snap/bin/curl" ]]; then
+    return 1
+  fi
 
   local curl_version_output curl_name_and_version
   curl_version_output="$("$1" --version 2>/dev/null)"
@@ -2207,6 +2305,33 @@ version_compare() (
 
   return 0
 )
+
+version_compare_three_part() {
+  local actual_major actual_minor actual_patch
+  local required_major required_minor required_patch
+
+  if [[ ! "$1" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+    return 1
+  fi
+  actual_major=$((10#${BASH_REMATCH[1]}))
+  actual_minor=$((10#${BASH_REMATCH[2]}))
+  actual_patch=$((10#${BASH_REMATCH[3]}))
+
+  if [[ ! "$2" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+) ]]; then
+    return 1
+  fi
+  required_major=$((10#${BASH_REMATCH[1]}))
+  required_minor=$((10#${BASH_REMATCH[2]}))
+  required_patch=$((10#${BASH_REMATCH[3]}))
+
+  if ((actual_major != required_major)); then
+    ((actual_major > required_major))
+  elif ((actual_minor != required_minor)); then
+    ((actual_minor > required_minor))
+  else
+    ((actual_patch >= required_patch))
+  fi
+}
 
 if check_core_mode; then
   run_check_core
@@ -2297,6 +2422,10 @@ if ! have_planned_actions; then
 fi
 
 plan_sudo_requirements
+
+if planned_operations_require_sudo && sudo_enabled; then
+  validate_sudo_version
+fi
 
 if planned_operations_require_sudo && external_sudo_enabled; then
   validate_external_sudo_credential
@@ -2472,6 +2601,7 @@ install_core_homebrew_packages
 install_brewfiles
 install_ssh_keys
 install_dotpkgs
+show_homebrew_shellenv_reminder
 
 # FIN!
 exit 0
