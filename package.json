@@ -13,9 +13,9 @@
   },
   "homepage": "https://bootbox.tanaab.sh",
   "type": "module",
-  "packageManager": "bun@1.3.4",
+  "packageManager": "bun@1.4.2",
   "engines": {
-    "bun": ">=1.3.0 <1.4.0"
+    "bun": ">=1.4.0 <1.5.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
