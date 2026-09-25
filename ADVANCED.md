@@ -43,6 +43,11 @@ Before stowing, `bootbox` simulates the operation and identifies conflicting tar
 conflicts are preserved under `$HOME/.tanaab-backups/stow-<timestamp>/` before the requested
 package is applied. Dotpackage files, backups, and conflict handling never use sudo.
 
+On a fresh home, `bootbox` preserves Stow-managed container directories such as `.codex` and
+`.codex/plugins` as real directories and links managed files beneath them. This leaves room for
+unmanaged siblings. Existing folded directory symlinks are not migrated automatically; the
+no-folding layout applies when the directories are first stowed into a fresh target.
+
 ### SSH Keys
 
 SSH-key inputs use `vault/item[:filename]` syntax. `bootbox` reads each private key through the
