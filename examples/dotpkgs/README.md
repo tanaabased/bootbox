@@ -16,6 +16,7 @@ EOF
 
 # should stow the requested dotpkgs
 HOME="$(pwd)/.tmp/home" bootbox \
+  --dotpkg dotpkgs/codex \
   --dotpkg dotpkgs/git \
   --dotpkg dotpkgs/zsh \
   > .tmp/setup.log 2>&1
@@ -41,6 +42,15 @@ test "$(cat .tmp/home/.zshrc)" = "$(cat dotpkgs/zsh/.zshrc)"
 
 # should install the zsh config contents
 grep -F 'BOOTBOX_DOTPKGS=1' .tmp/home/.zshrc
+
+# should keep the Codex container directories real
+test -d .tmp/home/.codex && test ! -L .tmp/home/.codex && test -d .tmp/home/.codex/plugins && test ! -L .tmp/home/.codex/plugins
+
+# should symlink the managed Codex files beneath their containers
+test -L .tmp/home/.codex/AGENTS.md && test -L .tmp/home/.codex/plugins/example
+
+# should link the managed Codex files to their expected contents
+test "$(cat .tmp/home/.codex/AGENTS.md)" = "$(cat dotpkgs/codex/.codex/AGENTS.md)" && test "$(cat .tmp/home/.codex/plugins/example)" = "$(cat dotpkgs/codex/.codex/plugins/example)"
 
 # should create a backup copy of the conflicting file
 find .tmp/home/.tanaab-backups -name '.gitconfig' | grep .
