@@ -54,6 +54,6 @@ jobs:
       - name: Run Leia-backed example
         shell: bash
         run: |
-          brew update
+          HOMEBREW_NO_AUTO_UPDATE= brew update-if-needed
           mkdir -p examples/.tmp
           TMPDIR="$PWD/examples/.tmp" bun ./node_modules/.bin/leia "examples/${{ matrix.example }}/README.md" --stdin --retry 0
