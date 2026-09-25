@@ -1824,6 +1824,7 @@ simulate_dotpkg() {
   "${STOW}" \
     --simulate \
     --verbose=1 \
+    --no-folding \
     --dir "${dotpkg_parent}" \
     --target "${TARGET}" \
     "${dotpkg_name}" 2>&1
@@ -1973,6 +1974,7 @@ stow_dotpkg() {
   dotpkg_name="$(basename "${dotpkg}")"
 
   execute "${STOW}" \
+    --no-folding \
     --dir "${dotpkg_parent}" \
     --target "${TARGET}" \
     "${dotpkg_name}"
