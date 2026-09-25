@@ -1,5 +1,7 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
+## v1.0.0-beta.11 - [September 25, 2026](https://github.com/tanaabased/bootbox/releases/tag/v1.0.0-beta.11)
+
 - Fixed fresh-home dotpackage installs to keep Stow-managed directories real and link only their contents. ([#17](https://github.com/tanaabased/bootbox/issues/17), [#18](https://github.com/tanaabased/bootbox/pull/18))
 
 ## v1.0.0-beta.10 - [September 19, 2026](https://github.com/tanaabased/bootbox/releases/tag/v1.0.0-beta.10)
