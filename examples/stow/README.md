@@ -32,10 +32,8 @@ brew uninstall --formula --force stow
 HOME="$(pwd)/.tmp/home" bootbox --no-sudo --brewfile= 2>&1 | tee .tmp/clean.log
 bootbox --check-core
 
-# should record subsequent rebuilds through the selected Homebrew executable
-bash prepare-brew-wrapper.sh
-
 # should inject a synthetic obsolete module path into real Stow
+bash prepare-brew-wrapper.sh
 bash inject-stale-path.sh
 if stow --version > .tmp/fault.log 2>&1; then cat .tmp/fault.log; exit 1; fi
 cat .tmp/fault.log
@@ -44,9 +42,6 @@ grep -F "Can't locate Stow.pm in @INC" .tmp/fault.log
 # should report broken core readiness without repairing Stow
 if bootbox --check-core; then exit 1; fi
 if stow --version; then exit 1; fi
-
-# should demonstrate the pre-fix artifact incorrectly accepts broken Stow
-"$BOOTBOX_BASELINE" --check-core
 
 # should recover real Stow and apply the dotpackage
 HOME="$(pwd)/.tmp/home" bootbox --no-sudo --brewfile= --dotpkg dotpkgs/shell 2>&1 | tee .tmp/recovery.log
