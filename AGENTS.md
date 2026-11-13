@@ -75,6 +75,9 @@ This is directional guidance, not an expansion of the current public contract:
   `OP_SERVICE_ACCOUNT_TOKEN` in every diagnostic surface.
 - Preserve the established Tanaab CLI colors and action-label styles rather than introducing
   one-off output conventions.
+- Add user-facing documentation only for a concrete installation, configuration, operation, or
+  recovery task. Implementation changes alone do not justify documentation; keep test rationale
+  with its example and temporary validation evidence in the PR.
 
 ## `bootbox.sh` Invariants
 
@@ -108,6 +111,11 @@ This is directional guidance, not an expansion of the current public contract:
 ## Examples And Leia
 
 - Examples are executable Leia specs consumed in CI, not prose-only documentation.
+- Test shell execution, diagnostics, exit status, permissions, and file changes through the prepared
+  `bootbox` entrypoint in the narrowest owning Leia example. Do not extract or source implementation
+  functions into a separate runtime test harness.
+- Reserve unit or component suites for genuinely owned JavaScript tooling logic when needed, rather
+  than using them as an alternative shell test runner.
 - Keep `examples/inputs` non-mutating; it owns the public CLI contract, displayed defaults, input
   validation, precedence, and list-clearing behavior.
 - Keep named domain examples focused on defaults, Homebrew installation, Brewfiles, dotpackages,

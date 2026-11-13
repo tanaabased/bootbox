@@ -1,7 +1,7 @@
 # Leia Example Guidance
 
-This file applies when editing `examples/**/README.md`. These README files are executable Leia
-specs consumed in CI.
+This file applies to all `examples/**` files, including helpers and fixtures. Scenario READMEs are
+executable Leia specs consumed in CI.
 
 ## General Style
 
@@ -34,9 +34,13 @@ specs consumed in CI.
   mutations over fixture binaries that emulate runtime dependencies.
 - When simulation is unavoidable, prefer a committed example-local helper over generating a long
   fixture with a heredoc inside the README.
-- Hide repeated fixture environment and argument setup behind committed example-local helper scripts
-  when it makes README commands clearer.
-- Use `.tmp/` for scenario scratch data, logs, patched script copies, and helper internals.
+- Keep product commands and behavior assertions visible in the README. Helpers may prepare runtime
+  state or inject a narrowly defined external failure; do not hide the tested flow in a helper or
+  extract functions from the product script.
+- Check in static inputs beside their owning README. Generate only runtime-dependent state and keep
+  scenario-specific helpers local; share existing helpers only when there are real consumers.
+- Use `.tmp/` for scenario scratch data and logs needed for multiple assertions. Keep failure
+  diagnostics visible before temporary state is discarded.
 - Leia embeds executable command blocks in JavaScript template literals. Inside those blocks, do not
   use literal backticks or braced shell expansions such as `${VAR}`.
 - Use `$(command)` instead of backtick command substitution and `$VAR` instead of `${VAR}`. When
@@ -49,17 +53,24 @@ specs consumed in CI.
 - Use `## Setup` and `## Testing`.
 - Keep `Setup` focused on minimal prerequisites for the scenario.
 - Let the workflow and runtime provide CI/non-TTY context. Do not set `CI` or `NONINTERACTIVE`
-  inside example commands.
+  inside example commands except when explicitly testing those controls. A terminal-specific test
+  may unset them for its pseudo-terminal child only.
 - Mutating domain examples should normally run `bootbox` once. Use multiple successful runs only
   when rerun, idempotency, or distinct execution modes are the scenario contract.
 - Put commands immediately below each `# should ...` line with no blank lines inside the test body.
 - Separate one `# should ...` test from the next with a blank line.
+- Restore injected dependency state before independent failure cases. Label intercepted command
+  failures separately from real provisioning and recovery evidence.
 - Do not add destroy or cleanup sections for runner-local state. Each example runs in its own fresh
   GitHub-hosted macOS or Ubuntu job, and the VM is discarded after the job.
 - If examples ever run on persistent infrastructure or mutate shared external state, change the
   execution policy centrally before adding targeted cleanup back to individual scenarios.
 
 ## Local Validation
+
+- Use the installed Leia scenario skill and documentation matching the project's Leia version.
+- Invoke the explicit Bun-backed `bun run leia` script. CI uses `tanaabased/actions/run-leia@v1`
+  after preparing the candidate artifact, with Bash and zero retries for mutating scenarios.
 
 - Do not run Leia examples locally as routine validation. They are CI-owned executable scenarios and
   may mutate the machine.
