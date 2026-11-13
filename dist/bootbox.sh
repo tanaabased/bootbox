@@ -83,7 +83,7 @@ tty_tp="$(tty_escape '38;2;0;200;138')"    # #00c88a
 tty_ts="$(tty_escape '38;2;219;39;119')"   # #db2777
 
 # Keep a single top-level assignment so release automation can stamp the entrypoint in place.
-SCRIPT_VERSION="v1.0.0-beta.11"
+SCRIPT_VERSION="v1.0.0-beta.12"
 SCRIPT_NAME_SOURCE="${BASH_SOURCE[0]:-${0}}"
 SCRIPT_NAME="${SCRIPT_NAME_SOURCE##*/}"
 
@@ -957,6 +957,9 @@ unset DOTPKGS_NEED_STOW
 unset EFFECTIVE_BREWFILE
 unset DOTPKG_BACKUP_DIR
 unset STOW
+unset STOW_NEEDS_REPAIR
+unset STOW_REPAIR_ATTEMPTED
+unset STOW_DIAGNOSTIC
 
 declare -a PLANNED_ACTIONS=()
 declare -a CORE_BREW_FORMULAS_TO_INSTALL=()
@@ -1019,15 +1022,6 @@ executable_available() {
 
 # shellcheck disable=SC2329
 test_brew() {
-  if [[ ! -x "$1" ]]; then
-    return 1
-  fi
-
-  "$1" --version &>/dev/null
-}
-
-# shellcheck disable=SC2329
-test_stow() {
   if [[ ! -x "$1" ]]; then
     return 1
   fi
@@ -1104,6 +1098,7 @@ debug_sudo_plan() {
     debug "sudo may be required: Homebrew installation"
   elif [[ -n "${BREWFILES_NEED_INSTALL:-}" ]] \
     && [[ "${#CORE_BREW_DISPLAY_TO_INSTALL[@]}" -eq 0 ]] \
+    && [[ -z "${STOW_NEEDS_REPAIR:-}" ]] \
     && [[ -z "${SSH_KEYS_NEED_INSTALL:-}" ]] \
     && [[ -z "${DOTPKGS_NEED_STOW:-}" ]]; then
     debug "sudo not required: brewfile-only plan has no privileged file operations"
@@ -1437,6 +1432,18 @@ plan_core_homebrew_packages() {
   elif [[ "${BREW_NEEDS_INSTALL:-0}" != "1" ]]; then
     debug "core Homebrew packages are already installed"
   fi
+
+  STOW_NEEDS_REPAIR=""
+  if [[ "${BREW_NEEDS_INSTALL:-0}" != "1" ]] && brew_formula_installed stow; then
+    if ! ensure_stow; then
+      if stow_has_stale_homebrew_perl_path 2>/dev/null; then
+        STOW_NEEDS_REPAIR="1"
+        plan_action "${tty_tp}rebuild${tty_reset} ${tty_ts}stow${tty_reset} from source ${tty_dim}(obsolete Homebrew Perl module path)${tty_reset}"
+      elif ! check_core_mode; then
+        abort_stow_unready
+      fi
+    fi
+  fi
 }
 
 run_check_core() {
@@ -1457,6 +1464,11 @@ run_check_core() {
 
   if [[ "${#CORE_BREW_DISPLAY_TO_INSTALL[@]}" -gt 0 ]]; then
     debug "check-core result: core Homebrew packages are missing"
+    exit 1
+  fi
+
+  if ! ensure_stow; then
+    debug_multi "check-core result: stow cannot run:" "${STOW_DIAGNOSTIC}"
     exit 1
   fi
 
@@ -1622,12 +1634,129 @@ install_brewfiles() {
 }
 
 ensure_stow() {
-  if [[ -n "${STOW:-}" ]] && test_stow "${STOW}"; then
+  # Keep the selected executable even when it fails, rather than hiding its
+  # diagnostics by finding a different healthy Stow later in PATH.
+  if [[ -e "${HOMEBREW_PREFIX}/bin/stow" ]] || [[ -L "${HOMEBREW_PREFIX}/bin/stow" ]]; then
+    STOW="${HOMEBREW_PREFIX}/bin/stow"
+  elif [[ -z "${STOW:-}" ]]; then
+    STOW="$(type -P stow || true)"
+  fi
+
+  STOW_DIAGNOSTIC=""
+  if [[ -z "${STOW}" ]] || [[ ! -x "${STOW}" ]]; then
+    STOW_DIAGNOSTIC="stow executable is missing or not executable: ${STOW:-stow}"
+    return 1
+  fi
+
+  if STOW_DIAGNOSTIC="$("${STOW}" --version 2>&1)"; then
+    STOW_DIAGNOSTIC=""
+    return 0
+  fi
+  return 1
+}
+
+resolve_file_path() {
+  local path="$1"
+  local parent
+  local link
+  local hops=0
+
+  while [[ "${hops}" -lt 40 ]]; do
+    parent="$(cd -P "$(dirname "${path}")" && pwd)" || return 1
+    path="${parent}/$(basename "${path}")"
+    if [[ ! -L "${path}" ]]; then
+      printf "%s" "${path}"
+      return 0
+    fi
+    link="$(readlink "${path}")" || return 1
+    if [[ "${link}" == /* ]]; then
+      path="${link}"
+    else
+      path="${parent}/${link}"
+    fi
+    hops=$((hops + 1))
+  done
+  return 1
+}
+
+stow_has_stale_homebrew_perl_path() {
+  local script
+  local stow_prefix
+  local stow_cellar
+  local perl_prefix
+  local perl_cellar
+  local shebang
+  local line
+  local module_path
+  local old_perl
+  local lib_pattern='^use lib "([^"]+)";'
+
+  [[ "${STOW_DIAGNOSTIC:-}" == *"Can't locate Stow.pm in @INC"* ]] || return 1
+  [[ "${STOW_DIAGNOSTIC}" == *"BEGIN failed--compilation aborted"* ]] || return 1
+  stow_prefix="$("${BREW}" --prefix stow 2>/dev/null)" || return 1
+  stow_prefix="$(cd -P "${stow_prefix}" && pwd)" || return 1
+  stow_cellar="$("${BREW}" --cellar stow 2>/dev/null)" || return 1
+  stow_cellar="$(cd -P "${stow_cellar}" && pwd)" || return 1
+  [[ "${stow_prefix}" == "${stow_cellar}/"* ]] || return 1
+  script="$(resolve_file_path "${STOW}")" || return 1
+  [[ "${script}" == "${stow_prefix}/bin/stow" ]] || return 1
+
+  IFS= read -r shebang < "${script}" || return 1
+  [[ "${shebang}" == "#!${HOMEBREW_PREFIX}/opt/perl/bin/perl" ]] || return 1
+  perl_prefix="$("${BREW}" --prefix perl 2>/dev/null)" || return 1
+  perl_prefix="$(cd -P "${perl_prefix}" && pwd)" || return 1
+  perl_cellar="$("${BREW}" --cellar perl 2>/dev/null)" || return 1
+  perl_cellar="$(cd -P "${perl_cellar}" && pwd)" || return 1
+  [[ "${perl_prefix}" == "${perl_cellar}/"* ]] || return 1
+
+  while IFS= read -r line; do
+    if [[ "${line}" =~ ${lib_pattern} ]]; then
+      module_path="${BASH_REMATCH[1]}"
+      # The affected bottle embedded a Stow-prefixed absolute Perl Cellar path.
+      [[ "${module_path}" == "${stow_prefix}/"* || "${module_path}" == "${perl_cellar}/"* ]] || continue
+      [[ "${module_path}" == *"${perl_cellar}/"* ]] || continue
+      old_perl="${module_path##*"${perl_cellar}/"}"
+      old_perl="${old_perl%%/*}"
+      [[ -n "${old_perl}" ]] && [[ "${old_perl}" != "$(basename "${perl_prefix}")" ]] || continue
+      [[ "${module_path}" == *"${perl_cellar}/${old_perl}/lib/perl5/site_perl/"* ]] || continue
+      [[ ! -e "${module_path}/Stow.pm" ]] || continue
+      return 0
+    fi
+  done < "${script}"
+  return 1
+}
+
+abort_stow_unready() {
+  abort_multi "$(cat <<EOABORT
+stow cannot run: ${STOW:-stow}
+${STOW_DIAGNOSTIC:-stow --version failed without diagnostics.}
+check this Stow installation and its Perl module paths, then rerun bootbox.
+EOABORT
+)"
+}
+
+ensure_core_stow() {
+  if ensure_stow; then
     return 0
   fi
 
-  STOW="$(find_tool stow || true)"
-  [[ -n "${STOW}" ]]
+  if [[ "${STOW_REPAIR_ATTEMPTED:-0}" == "1" ]] || ! stow_has_stale_homebrew_perl_path 2>/dev/null; then
+    abort_stow_unready
+  fi
+
+  STOW_REPAIR_ATTEMPTED="1"
+  log "${tty_tp}rebuilding${tty_reset} ${tty_ts}stow${tty_reset} from source ${tty_dim}(obsolete Homebrew Perl module path)${tty_reset}"
+  if ! "${BREW}" reinstall --build-from-source stow; then
+    abort_multi "$(cat <<EOABORT
+failed to rebuild stow from source using ${BREW}.
+${STOW_DIAGNOSTIC}
+check the Homebrew diagnostics above, then rerun bootbox.
+EOABORT
+)"
+  fi
+  if ! ensure_stow; then
+    abort_stow_unready
+  fi
 }
 
 ensure_op() {
@@ -1947,7 +2076,7 @@ evaluate_dotpkgs() {
     return 0
   fi
 
-  if ! ensure_stow; then
+  if [[ "${STOW_NEEDS_REPAIR:-0}" == "1" ]] || ! ensure_stow; then
     return 1
   fi
 
@@ -2425,7 +2554,9 @@ if [[ "${BREW_NEEDS_INSTALL:-0}" == "1" ]]; then
 fi
 
 install_core_homebrew_packages
+ensure_core_stow
 install_brewfiles
+ensure_core_stow
 install_ssh_keys
 install_dotpkgs
 show_homebrew_shellenv_reminder
