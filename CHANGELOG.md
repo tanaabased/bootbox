@@ -1,5 +1,8 @@
 ## {{ UNRELEASED_VERSION }} - [{{ UNRELEASED_DATE }}]({{ UNRELEASED_LINK }})
 
+- fixed core readiness to reject broken Stow installations before dotfile setup and retain failure diagnostics. ([#23](https://github.com/tanaabased/bootbox/issues/23), [#24](https://github.com/tanaabased/bootbox/pull/24))
+- fixed stale Homebrew Perl module paths by rebuilding affected Stow installations once without sudo. ([#23](https://github.com/tanaabased/bootbox/issues/23), [#24](https://github.com/tanaabased/bootbox/pull/24))
+
 ## v1.0.0-beta.11 - [September 25, 2026](https://github.com/tanaabased/bootbox/releases/tag/v1.0.0-beta.11)
 
 - Fixed fresh-home dotpackage installs to keep Stow-managed directories real and link only their contents. ([#17](https://github.com/tanaabased/bootbox/issues/17), [#18](https://github.com/tanaabased/bootbox/pull/18))
