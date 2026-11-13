@@ -5,8 +5,11 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 prefix="$(brew --prefix)"
 [[ -O "${prefix}" && -L "${prefix}/bin/brew" ]]
-real_brew="$(readlink -f "${prefix}/bin/brew")"
-[[ -x "${real_brew}" && "${real_brew}" != "${prefix}/bin/brew" ]]
+real_brew="${prefix}/bin/bootbox-real-brew"
+[[ ! -e "${real_brew}" ]]
+# Homebrew derives its prefix from the invocation path, then follows the link
+# to find its repository. Keep both properties of the original entrypoint.
+ln -s "$(readlink "${prefix}/bin/brew")" "${real_brew}"
 control="${prefix}/.bootbox-stow-test"
 mkdir "${control}"
 printf '%s\n' "${real_brew}" > "${control}/real-brew"

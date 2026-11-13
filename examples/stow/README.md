@@ -43,6 +43,9 @@ grep -F "Can't locate Stow.pm in @INC" .tmp/fault.log
 if bootbox --check-core; then exit 1; fi
 if stow --version; then exit 1; fi
 
+# should demonstrate the pre-fix artifact incorrectly accepts broken Stow
+"$BOOTBOX_BASELINE" --check-core
+
 # should recover real Stow and apply the dotpackage
 HOME="$(pwd)/.tmp/home" bootbox --no-sudo --brewfile= --dotpkg dotpkgs/shell 2>&1 | tee .tmp/recovery.log
 grep -F 'rebuilding' .tmp/recovery.log | grep -F stow

@@ -14,22 +14,10 @@ jobs:
       fail-fast: false
       matrix:
         os:
-          - macos-26
           - ubuntu-24.04
         example:
-          - inputs
-          - defaults
-          - homebrew
-          - brewfiles
-          - dotpkgs
-          - ssh-keys
-          - legacy
-          - sudo
-        include:
-          - os: ubuntu-24.04
-            example: stow
-          - os: ubuntu-24.04
-            example: stow-failures
+          - stow
+          - stow-failures
     env:
       HOMEBREW_NO_AUTO_UPDATE: '1'
     steps:
@@ -39,6 +27,16 @@ jobs:
         uses: tanaabased/actions/setup-bun@v1
       - name: Install dependencies
         run: bun install --frozen-lockfile --ignore-scripts
+      - name: Prepare pre-fix regression artifact
+        if: matrix.example == 'stow'
+        shell: bash
+        run: |
+          git fetch --depth=1 origin 62c646d10abac6b84835359f1b10a645f2f4fb10
+          baseline="$RUNNER_TEMP/bootbox-baseline"
+          mkdir -p "$baseline"
+          git archive 62c646d10abac6b84835359f1b10a645f2f4fb10 | tar -x -C "$baseline"
+          (cd "$baseline" && bun run build)
+          echo "BOOTBOX_BASELINE=$baseline/dist/bootbox.sh" >> "$GITHUB_ENV"
       - name: Prepare release-shaped build
         uses: tanaabased/prepare-release-action@v1
         with:

@@ -41,12 +41,6 @@ executable Leia specs consumed in CI.
   scenario-specific helpers local; share existing helpers only when there are real consumers.
 - Use `.tmp/` for scenario scratch data and logs needed for multiple assertions. Keep failure
   diagnostics visible before temporary state is discarded.
-- Leia embeds executable command blocks in JavaScript template literals. Inside those blocks, do not
-  use literal backticks or braced shell expansions such as `${VAR}`.
-- Use `$(command)` instead of backtick command substitution and `$VAR` instead of `${VAR}`. When
-  braces are required for shell semantics, move that logic into a checked-in example-local helper.
-- These restrictions do not apply to Markdown fences or inline code outside executable blocks;
-  shell tests using `[ ... ]` or `[[ ... ]]` remain safe.
 
 ## Scenario Shape
 
