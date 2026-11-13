@@ -8,7 +8,7 @@ the shared [Stow setup helpers](../stow/README.md) modify the disposable runner'
 wrap its selected Homebrew executable. normal Homebrew commands remain real. the two repair-failure
 modes intercept only the rebuild command: one returns failure, and one returns success without
 fixing Stow. these are controlled failure checks, not evidence of a successful real rebuild; that
-belongs to [stow](../stow/README.md). real conflict backups remain in [dotpkgs](../dotpkgs/README.md).
+belongs to [stow-recovery](../stow-recovery/README.md). real conflict backups remain in [dotpkgs](../dotpkgs/README.md).
 run only on disposable CI runners.
 
 ## Setup

@@ -25,9 +25,10 @@ jobs:
           - ssh-keys
           - legacy
           - sudo
+          - stow
         include:
           - os: ubuntu-24.04
-            example: stow
+            example: stow-recovery
           - os: ubuntu-24.04
             example: stow-failures
     env:
