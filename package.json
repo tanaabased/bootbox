@@ -28,6 +28,7 @@
     "shellcheck": "^4.1.0"
   },
   "scripts": {
+    "test": "bash test/stow.sh",
     "build": "bun ./scripts/build-dist.js",
     "format:check": "prettier --check .",
     "format:write": "prettier --write .",

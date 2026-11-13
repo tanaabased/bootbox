@@ -1,0 +1,25 @@
+name: Component Tests
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  stow:
+    name: stow (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-26
+          - ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7
+      - name: Install Bun
+        uses: tanaabased/actions/setup-bun@v1
+      - name: Run command-boundary tests
+        run: bun run test

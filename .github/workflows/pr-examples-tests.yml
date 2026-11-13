@@ -25,6 +25,9 @@ jobs:
           - ssh-keys
           - legacy
           - sudo
+        include:
+          - os: ubuntu-24.04
+            example: stow
     env:
       HOMEBREW_NO_AUTO_UPDATE: '1'
       BOOTBOX_OP_TESTVAULT: ${{ secrets.TANAAB_OP_TESTVAULT }}

@@ -26,6 +26,11 @@ When Homebrew is missing, `bootbox` installs it into the platform's canonical pr
 The beta 1Password CLI is used because 1Password Environment commands required by downstream
 machine profiles are not yet available in the stable CLI contract used by this repository.
 
+`bootbox` checks that Stow can run. if a Homebrew-owned Stow script fails to find `Stow.pm` because
+it embeds an obsolete Homebrew Perl module path, setup rebuilds only Stow from source once and
+checks it again. this can take longer than a bottle install; healthy Stow is reused. other failures
+stop with diagnostics so you can repair the selected Stow installation before retrying.
+
 ### Brewfiles
 
 `bootbox` applies each selected Brewfile through Homebrew Bundle. Inputs may be local paths or
