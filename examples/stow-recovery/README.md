@@ -1,0 +1,74 @@
+# Stow recovery example
+
+this Linux-only scenario provisions missing Stow through the prepared `bootbox` artifact using the
+runner's user-owned Homebrew prefix. it then injects an obsolete Perl module path into real Stow,
+verifies a source rebuild restores dotfile setup, and repeats setup without another rebuild. a final
+cold install injects the same fault immediately after real Homebrew installation to exercise newly
+installed broken Stow too.
+
+clean provisioning, synthetic fault recovery, and repeat installation have separate logs. the fault
+injection exercises [#23](https://github.com/tanaabased/bootbox/issues/23); it does not reproduce the
+historical bottle or establish that current bottles are broken. healthy Stow provisioning runs on
+both macOS and Linux in [stow](../stow/README.md), and real conflict backups in [dotpkgs](../dotpkgs/README.md).
+run only on disposable CI runners: this scenario modifies the installed Homebrew Stow script and
+wraps the selected Homebrew executable. the wrapper delegates actual installs and rebuilds; it
+records rebuild commands and can inject the post-install fault. controlled refusal and command
+failures belong to [stow-failures](../stow-failures/README.md).
+
+## Setup
+
+```bash
+# should start with missing Stow in a user-owned Linux Homebrew prefix
+test "$(uname -s)" = Linux
+test -O "$(brew --prefix)"
+mkdir -p .tmp/home
+brew uninstall --formula --force stow
+```
+
+## Testing
+
+```bash
+# should provision Stow without sudo
+HOME="$(pwd)/.tmp/home" bootbox --no-sudo --brewfile= 2>&1 | tee .tmp/clean.log
+bootbox --check-core
+
+# should inject a synthetic obsolete module path into real Stow
+bash ../stow/prepare-brew-wrapper.sh
+bash ../stow/inject-stale-path.sh
+if stow --version > .tmp/fault.log 2>&1; then cat .tmp/fault.log; exit 1; fi
+cat .tmp/fault.log
+grep -F "Can't locate Stow.pm in @INC" .tmp/fault.log
+
+# should report broken core readiness without repairing Stow
+if bootbox --check-core; then exit 1; fi
+if stow --version; then exit 1; fi
+
+# should recover real Stow and apply the dotpackage
+HOME="$(pwd)/.tmp/home" bootbox --no-sudo --brewfile= --dotpkg ../stow/dotpkgs/shell 2>&1 | tee .tmp/recovery.log
+grep -F 'rebuilding' .tmp/recovery.log | grep -F stow
+test -L .tmp/home/.bootbox-stow-test
+cmp .tmp/home/.bootbox-stow-test ../stow/dotpkgs/shell/.bootbox-stow-test
+brew info --json=v2 stow | jq -e '.formulae[0].installed | length > 0 and all(.[]; .built_as_bottle == false)'
+bootbox --check-core
+control="$(brew --prefix)/.bootbox-stow-test"
+test "$(wc -l < "$control/repairs")" -eq 1
+
+# should repeat setup without another source rebuild
+HOME="$(pwd)/.tmp/home" bootbox --no-sudo --brewfile= --dotpkg ../stow/dotpkgs/shell 2>&1 | tee .tmp/repeat.log
+if grep -F rebuilding .tmp/repeat.log; then exit 1; fi
+bootbox --check-core
+control="$(brew --prefix)/.bootbox-stow-test"
+test "$(wc -l < "$control/repairs")" -eq 1
+
+# should detect a broken Stow immediately after real installation
+brew uninstall --formula --force stow
+control="$(brew --prefix)/.bootbox-stow-test"
+echo inject-install > "$control/mode"
+: > "$control/repairs"
+HOME="$(pwd)/.tmp/home" bootbox --no-sudo --brewfile= --dotpkg ../stow/dotpkgs/shell 2>&1 | tee .tmp/fresh-recovery.log
+cat "$control/install-fault.log"
+grep -F "Can't locate Stow.pm in @INC" "$control/install-fault.log"
+test "$(wc -l < "$control/repairs")" -eq 1
+cmp .tmp/home/.bootbox-stow-test ../stow/dotpkgs/shell/.bootbox-stow-test
+bootbox --check-core
+```

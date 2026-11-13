@@ -25,9 +25,14 @@ jobs:
           - ssh-keys
           - legacy
           - sudo
+          - stow
+        include:
+          - os: ubuntu-24.04
+            example: stow-recovery
+          - os: ubuntu-24.04
+            example: stow-failures
     env:
       HOMEBREW_NO_AUTO_UPDATE: '1'
-      BOOTBOX_OP_TESTVAULT: ${{ secrets.TANAAB_OP_TESTVAULT }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v7
@@ -51,9 +56,15 @@ jobs:
         run: |
           echo "$PWD/dist" >> "$GITHUB_PATH"
           echo "/home/linuxbrew/.linuxbrew/bin" >> "$GITHUB_PATH"
-      - name: Run Leia-backed example
+      - name: Refresh Homebrew metadata
         shell: bash
-        run: |
-          HOMEBREW_NO_AUTO_UPDATE= brew update-if-needed
-          mkdir -p examples/.tmp
-          TMPDIR="$PWD/examples/.tmp" bun ./node_modules/.bin/leia "examples/${{ matrix.example }}/README.md" --stdin --retry 0
+        run: HOMEBREW_NO_AUTO_UPDATE= brew update-if-needed
+      - name: Run Leia-backed example
+        uses: tanaabased/actions/run-leia@v1
+        env:
+          BOOTBOX_OP_TESTVAULT: ${{ matrix.example == 'ssh-keys' && secrets.TANAAB_OP_TESTVAULT || '' }}
+        with:
+          scenarios: examples/${{ matrix.example }}/README.md
+          shell: bash
+          retry: 0
+          stdin: true

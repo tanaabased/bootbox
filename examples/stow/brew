@@ -1,0 +1,27 @@
+#!/bin/bash
+set -euo pipefail
+
+prefix="$(cd "$(dirname "$0")/.." && pwd)"
+control="${prefix}/.bootbox-stow-test"
+real_brew="$(cat "${control}/real-brew")"
+mode="$(cat "${control}/mode")"
+
+# All normal Homebrew operations remain real. Only the named failure boundary
+# is intercepted; the product executable and its control flow are unchanged.
+if [[ "$*" == 'reinstall --build-from-source stow' ]]; then
+  printf '%s %s\n' "$0" "$*" >> "${control}/repairs"
+  case "${mode}" in
+    fail-repair) echo 'controlled Homebrew rebuild failure' >&2; exit 47 ;;
+    leave-broken) echo 'controlled Homebrew success without repairing Stow'; exit 0 ;;
+  esac
+fi
+
+if [[ "${mode}" == inject-install && "${1:-}" == install && " $* " == *' stow '* ]]; then
+  "${real_brew}" "$@"
+  bash "$(cat "${control}/injector")" stale "${control}"
+  "${prefix}/bin/stow" --version > "${control}/install-fault.log" 2>&1 || true
+  : > "${control}/mode"
+  exit 0
+fi
+
+exec "${real_brew}" "$@"
